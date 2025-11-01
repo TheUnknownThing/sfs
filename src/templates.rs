@@ -8,6 +8,7 @@ use crate::{
     app_state::AppState,
     csrf,
     sessions::{self, SessionUser},
+    settings::AppSettings,
 };
 use tower_sessions::{session::Error as SessionError, Session};
 
@@ -33,16 +34,27 @@ pub struct CurrentUserMeta {
     #[allow(dead_code)]
     pub id: i64,
     pub username: String,
-    #[allow(dead_code)]
     pub is_admin: bool,
 }
 
 impl LayoutContext {
     /// Build a layout context using the configured brand name
-    pub fn from_state(state: &AppState, title: impl Into<String>) -> Self {
+    pub async fn from_state(state: &AppState, title: impl Into<String>) -> Self {
+        let brand_name = match state.settings().current().await {
+            Ok(settings) => settings.ui_brand_name.clone(),
+            Err(err) => {
+                error!(
+                    target: "settings",
+                    %err,
+                    "failed to load settings for layout; using configured fallback"
+                );
+                state.config().ui.brand_name.clone()
+            }
+        };
+
         Self {
             title: title.into(),
-            brand_name: state.config().ui.brand_name.clone(),
+            brand_name,
             csrf: None,
             current_year: OffsetDateTime::now_utc().year(),
             current_user: None,
@@ -74,7 +86,9 @@ impl LayoutContext {
         let csrf_token = csrf::ensure_csrf_token(session).await?;
         let user = sessions::current_user(session).await?;
 
-        Ok(Self::from_state(state, title)
+        let layout = Self::from_state(state, title).await;
+
+        Ok(layout
             .with_csrf_token(Some(csrf_token))
             .with_current_user(user))
     }
@@ -299,16 +313,68 @@ impl DirectLinkErrorTemplate {
     }
 }
 
-#[allow(dead_code)]
 #[derive(Template)]
 #[template(path = "settings.html", escape = "html")]
 pub struct SettingsTemplate {
     pub layout: LayoutContext,
+    pub form: SettingsFormValues,
+    pub field_errors: SettingsFieldErrors,
+    pub general_error: Option<String>,
+    pub success_message: Option<String>,
 }
 
 impl SettingsTemplate {
-    #[allow(dead_code)]
-    pub fn new(layout: LayoutContext) -> Self {
-        Self { layout }
+    pub fn new(layout: LayoutContext, form: SettingsFormValues) -> Self {
+        Self {
+            layout,
+            form,
+            field_errors: SettingsFieldErrors::default(),
+            general_error: None,
+            success_message: None,
+        }
     }
+
+    pub fn with_field_errors(mut self, field_errors: SettingsFieldErrors) -> Self {
+        self.field_errors = field_errors;
+        self
+    }
+
+    pub fn with_general_error(mut self, message: impl Into<String>) -> Self {
+        self.general_error = Some(message.into());
+        self
+    }
+
+    pub fn with_success_message(mut self, message: impl Into<String>) -> Self {
+        self.success_message = Some(message.into());
+        self
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct SettingsFormValues {
+    pub max_file_size_bytes: String,
+    pub default_expiration_hours: String,
+    pub direct_link_ttl_minutes: String,
+    pub allow_anonymous_download: bool,
+    pub ui_brand_name: String,
+}
+
+impl SettingsFormValues {
+    pub fn from_settings(settings: &AppSettings) -> Self {
+        Self {
+            max_file_size_bytes: settings.max_file_size_bytes.to_string(),
+            default_expiration_hours: settings.default_expiration_hours.to_string(),
+            direct_link_ttl_minutes: settings.direct_link_ttl_minutes.to_string(),
+            allow_anonymous_download: settings.allow_anonymous_download,
+            ui_brand_name: settings.ui_brand_name.clone(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct SettingsFieldErrors {
+    pub max_file_size_bytes: Option<String>,
+    pub default_expiration_hours: Option<String>,
+    pub direct_link_ttl_minutes: Option<String>,
+    pub ui_brand_name: Option<String>,
 }

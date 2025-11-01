@@ -2,6 +2,7 @@ use crate::{
     config::AppConfig,
     direct_links::{DownloadTokenService, TokenError as DownloadTokenError},
     rate_limit::{DirectDownloadRateLimiter, DirectLinkRateLimiter, LoginRateLimiter},
+    settings::SettingsService,
 };
 use sqlx::SqlitePool;
 use std::sync::Arc;
@@ -22,6 +23,8 @@ pub struct AppState {
     pub direct_download_rate_limiter: Arc<DirectDownloadRateLimiter>,
     /// Service responsible for issuing and validating download tokens
     pub download_tokens: Arc<DownloadTokenService>,
+    /// Cached application settings loaded from the database
+    pub settings: Arc<SettingsService>,
 }
 
 #[derive(Debug, Error)]
@@ -35,6 +38,7 @@ impl AppState {
     pub fn new(db: SqlitePool, config: AppConfig) -> Result<Self, AppStateError> {
         let download_tokens =
             DownloadTokenService::from_config(&config.security.download_token_secret)?;
+        let settings_service = SettingsService::new(db.clone());
 
         Ok(Self {
             db,
@@ -43,6 +47,7 @@ impl AppState {
             direct_link_rate_limiter: Arc::new(DirectLinkRateLimiter::new()),
             direct_download_rate_limiter: Arc::new(DirectDownloadRateLimiter::new()),
             download_tokens: Arc::new(download_tokens),
+            settings: Arc::new(settings_service),
         })
     }
 
@@ -74,5 +79,10 @@ impl AppState {
     /// Access the download token service
     pub fn download_tokens(&self) -> &DownloadTokenService {
         &self.download_tokens
+    }
+
+    /// Access the application settings service
+    pub fn settings(&self) -> &SettingsService {
+        self.settings.as_ref()
     }
 }
