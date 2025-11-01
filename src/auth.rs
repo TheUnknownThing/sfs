@@ -284,7 +284,7 @@ pub async fn find_user_by_username(
 ) -> Result<Option<UserRecord>, AuthError> {
     let record = sqlx::query_as::<_, UserRecord>(
         r#"
-        SELECT id, username, password_hash, is_admin as "is_admin: bool"
+        SELECT id, username, password_hash, is_admin
         FROM users
         WHERE username = ?
         "#,

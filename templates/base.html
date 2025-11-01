@@ -4,9 +4,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}{{ layout.title }} - {{ layout.brand_name }}{% endblock %}</title>
-    <link rel="stylesheet" href="https://unpkg.com/@picocss/pico@latest/css/pico.min.css" integrity="sha384-HWAjeX8Z/rcMhXwiGInx42Ja9rFqV/gBf0M5IgGlZ0Ja79cJQX/jFwvW0zW4I7hV" crossorigin="anonymous">
-    <script src="https://unpkg.com/htmx.org@1.9.12" integrity="sha384-KWsc5GPN46Uy6OC+X7W43V8CyLiyq1pzCOpFRTkUPg5v9nDVUt9vSV2nV3TqaePX" crossorigin="anonymous" defer></script>
-    <script src="https://unpkg.com/feather-icons@4.29.0/dist/feather.min.js" integrity="sha384-9zadegOgmK0+FtHtG19XXY1KeLa/OL5rzQgWxYzX7ia+6/e1kq8J+V3umIA9AtIm" crossorigin="anonymous" defer></script>
+    <link rel="stylesheet" href="https://unpkg.com/@picocss/pico@2.1.1/css/pico.min.css" integrity="sha384-L1dWfspMTHU/ApYnFiMz2QID/PlP1xCW9visvBdbEkOLkSSWsP6ZJWhPw6apiXxU" crossorigin="anonymous">
+    <script src="https://unpkg.com/htmx.org@1.9.12" integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2" crossorigin="anonymous" defer></script>
+    <script src="https://unpkg.com/feather-icons@4.29.0/dist/feather.min.js" integrity="sha384-RyE9TSx1shZZA6GS7TToIk1J7zY1mU8evbLDXYgOz4zgduwPFEtnHd1bswt8PG/u" crossorigin="anonymous" defer></script>
     {% if let Some(csrf) = layout.csrf %}
     <meta name="csrf-token" content="{{ csrf.token }}">
     {% endif %}

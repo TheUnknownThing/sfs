@@ -109,6 +109,8 @@ async fn create_tables(pool: &SqlitePool) -> Result<(), DatabaseError> {
     .execute(pool)
     .await?;
 
+    ensure_users_table_schema(pool).await?;
+
     // Create files table
     sqlx::query(
         r#"
@@ -190,6 +192,28 @@ async fn create_tables(pool: &SqlitePool) -> Result<(), DatabaseError> {
     .await?;
 
     info!("Database tables created successfully");
+
+    Ok(())
+}
+
+/// Ensure the users table has the expected columns when upgrading existing databases.
+async fn ensure_users_table_schema(pool: &SqlitePool) -> Result<(), DatabaseError> {
+    let has_is_admin_column: Option<i64> = sqlx::query_scalar(
+        "SELECT 1 FROM pragma_table_info('users') WHERE name = 'is_admin' LIMIT 1",
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    if has_is_admin_column.is_none() {
+        info!("Adding is_admin column to users table");
+        sqlx::query("ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0")
+            .execute(pool)
+            .await?;
+
+        sqlx::query("UPDATE users SET is_admin = 1 WHERE username = 'admin'")
+            .execute(pool)
+            .await?;
+    }
 
     Ok(())
 }
