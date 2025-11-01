@@ -126,11 +126,20 @@ impl<T: Template> IntoResponse for HtmlTemplate<T> {
 #[template(path = "home.html", escape = "html")]
 pub struct HomeTemplate {
     pub layout: LayoutContext,
+    pub recent_uploads: Vec<HomeUploadRow>,
 }
 
 impl HomeTemplate {
     pub fn new(layout: LayoutContext) -> Self {
-        Self { layout }
+        Self {
+            layout,
+            recent_uploads: Vec::new(),
+        }
+    }
+
+    pub fn with_recent_uploads(mut self, uploads: Vec<HomeUploadRow>) -> Self {
+        self.recent_uploads = uploads;
+        self
     }
 }
 
@@ -162,18 +171,44 @@ impl LoginTemplate {
     }
 }
 
-#[allow(dead_code)]
 #[derive(Template)]
 #[template(path = "upload.html", escape = "html")]
 pub struct UploadTemplate {
     pub layout: LayoutContext,
+    pub max_file_size_display: String,
+    pub max_expiration_hours: u64,
+    pub expires_in_value: String,
+    pub error_message: Option<String>,
 }
 
 impl UploadTemplate {
-    #[allow(dead_code)]
-    pub fn new(layout: LayoutContext) -> Self {
-        Self { layout }
+    pub fn new(
+        layout: LayoutContext,
+        max_file_size_display: impl Into<String>,
+        max_expiration_hours: u64,
+        expires_in_value: impl Into<String>,
+    ) -> Self {
+        Self {
+            layout,
+            max_file_size_display: max_file_size_display.into(),
+            max_expiration_hours,
+            expires_in_value: expires_in_value.into(),
+            error_message: None,
+        }
     }
+
+    pub fn with_error_message(mut self, message: impl Into<String>) -> Self {
+        self.error_message = Some(message.into());
+        self
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct HomeUploadRow {
+    pub code: String,
+    pub original_name: String,
+    pub size_display: String,
+    pub created_display: String,
 }
 
 #[allow(dead_code)]

@@ -2,7 +2,33 @@
 
 {% block content %}
 <section>
-    <h1>Upload</h1>
-    <p>Upload interface coming soon.</p>
+    <hgroup>
+        <h1>Upload a file</h1>
+        <p>Maximum size {{ max_file_size_display }}.</p>
+    </hgroup>
+    {% if let Some(error) = error_message %}
+    <article class="contrast" role="alert">
+        <p>{{ error }}</p>
+    </article>
+    {% endif %}
+    <form method="post" action="/upload" enctype="multipart/form-data">
+        {% if let Some(csrf) = layout.csrf %}
+        <input type="hidden" name="csrf_token" value="{{ csrf.token }}">
+        {% endif %}
+        <label>
+            File
+            <input type="file" name="file" required aria-required="true" />
+        </label>
+        <label>
+            Expires in (hours)
+            <input type="number" name="expires_in" min="1" max="{{ max_expiration_hours }}" value="{{ expires_in_value }}" required aria-required="true" />
+            <small>Files will be removed automatically after the selected time.</small>
+        </label>
+        <label>
+            Notes (optional)
+            <textarea name="notes" rows="3" placeholder="Internal notes for this upload"></textarea>
+        </label>
+        <button type="submit">Start upload</button>
+    </form>
 </section>
 {% endblock %}

@@ -30,4 +30,35 @@
         <li>Audit-ready activity logs</li>
     </ul>
 </section>
+{% if layout.current_user.is_some() %}
+<section>
+    <h2>Recent uploads</h2>
+    {% if recent_uploads.is_empty() %}
+    <p>No uploads yet. <a href="/upload">Upload your first file</a> to get started.</p>
+    {% else %}
+    <div class="overflow-auto">
+        <table>
+            <thead>
+                <tr>
+                    <th scope="col">File name</th>
+                    <th scope="col">Code</th>
+                    <th scope="col">Size</th>
+                    <th scope="col">Uploaded</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for upload in recent_uploads %}
+                <tr>
+                    <td><a href="/f/{{ upload.code }}">{{ upload.original_name }}</a></td>
+                    <td><code>{{ upload.code }}</code></td>
+                    <td>{{ upload.size_display }}</td>
+                    <td>{{ upload.created_display }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</section>
+{% endif %}
 {% endblock %}

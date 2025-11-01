@@ -8,7 +8,7 @@ resolver = "2"
 # Web framework
 axum = { version = "0.7", features = ["http2", "macros", "multipart"] }
 tower = "0.4"
-tower-http = { version = "0.5", features = ["fs", "trace"] }
+tower-http = { version = "0.5", features = ["fs", "trace", "limit"] }
 tower_governor = "0.1"
 tower-sessions = "0.11"
 tower-sessions-sqlx-store = { version = "0.11", features = ["sqlite"] }
@@ -53,6 +53,7 @@ time = "0.3"
 
 # MIME type detection
 mime_guess = "2.0"
+sha2 = "0.10"
 
 [dev-dependencies]
 tokio-test = "0.4"

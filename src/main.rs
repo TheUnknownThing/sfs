@@ -3,6 +3,7 @@ mod auth;
 mod config;
 mod csrf;
 mod database;
+mod files;
 mod logging;
 mod rate_limit;
 mod sessions;
@@ -14,7 +15,10 @@ use auth::{
     randomized_backoff, touch_user_login, update_password_hash, verify_password, AuthError,
 };
 use axum::{
-    extract::{ConnectInfo, State},
+    extract::{
+        multipart::{Field, Multipart, MultipartError},
+        ConnectInfo, State,
+    },
     http::{header, HeaderValue, StatusCode},
     response::{IntoResponse, Redirect, Response},
     routing::{get, post},
@@ -26,14 +30,24 @@ use logging::init_logging;
 use rate_limit::RateLimitError;
 use serde::Deserialize;
 use sessions::{clear_user, current_user, store_user, SessionUser};
-use std::net::SocketAddr;
-use templates::{HomeTemplate, HtmlTemplate, LayoutContext, LoginTemplate};
+use sha2::{Digest, Sha256};
+use std::{
+    net::SocketAddr,
+    path::{Path, PathBuf},
+};
+use templates::{
+    HomeTemplate, HomeUploadRow, HtmlTemplate, LayoutContext, LoginTemplate, UploadTemplate,
+};
 use thiserror::Error;
+use time::{Duration as TimeDuration, OffsetDateTime};
+use tokio::{fs, io::AsyncWriteExt};
 use tower::ServiceBuilder;
+use tower_http::limit::RequestBodyLimitLayer;
 use tower_http::trace::TraceLayer;
 use tower_sessions::{cookie::SameSite, Session, SessionManagerLayer};
 use tower_sessions_sqlx_store::SqliteStore;
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
+use ulid::Ulid;
 
 #[derive(Debug, Error)]
 enum AppError {
@@ -54,6 +68,17 @@ enum AppError {
     #[error("Authentication error: {0}")]
     Auth(#[from] AuthError),
 }
+
+const MULTIPART_OVERHEAD_BYTES: u64 = 64_u64 * 1024;
+const MAX_CODE_GENERATION_ATTEMPTS: usize = 5;
+const MAX_EXPIRATION_HOURS: u64 = 2160;
+const DEFAULT_RECENT_UPLOADS_LIMIT: i64 = 10;
+const CODE_SEGMENT_LENGTH: usize = 4;
+const CODE_TOTAL_LENGTH: usize = CODE_SEGMENT_LENGTH * 2;
+const CODE_ALPHABET: [char; 31] = [
+    '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K', 'M',
+    'N', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+];
 
 #[tokio::main]
 async fn main() -> Result<(), AppError> {
@@ -85,11 +110,25 @@ async fn main() -> Result<(), AppError> {
     // Create app state
     let app_state = AppState::new(db_pool, config.clone());
 
+    // Configure per-route upload limits with a small multipart overhead allowance
+    let upload_body_limit = config
+        .storage
+        .max_file_size_bytes
+        .saturating_add(MULTIPART_OVERHEAD_BYTES);
+
+    let upload_routes = Router::new()
+        .route(
+            "/upload",
+            get(upload_form_handler).post(upload_submit_handler),
+        )
+        .layer(RequestBodyLimitLayer::new(upload_body_limit as usize));
+
     // Create router with middleware in correct order: Trace -> Sessions -> Routes
     let app = Router::new()
         .route("/", get(home_handler))
         .route("/login", get(login_form_handler).post(login_submit_handler))
         .route("/logout", post(logout_handler))
+        .merge(upload_routes)
         .layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
@@ -112,8 +151,602 @@ async fn main() -> Result<(), AppError> {
 }
 
 async fn home_handler(State(state): State<AppState>, session: Session) -> impl IntoResponse {
+    let session_user = match current_user(&session).await {
+        Ok(user) => user,
+        Err(err) => {
+            error!(target: "sessions", %err, "failed to read session while rendering home");
+            None
+        }
+    };
+
     let layout = layout_from_session(&state, &session, "Home").await;
-    HtmlTemplate::new(HomeTemplate::new(layout))
+    let mut template = HomeTemplate::new(layout);
+
+    if let Some(user) = session_user {
+        match files::list_recent_files_for_user(state.db(), user.id, DEFAULT_RECENT_UPLOADS_LIMIT)
+            .await
+        {
+            Ok(records) => {
+                let uploads = records
+                    .into_iter()
+                    .filter_map(map_user_file_summary_for_home)
+                    .collect();
+                template = template.with_recent_uploads(uploads);
+            }
+            Err(err) => {
+                error!(target: "files", user_id = user.id, %err, "failed to load recent uploads");
+            }
+        }
+    }
+
+    HtmlTemplate::new(template)
+}
+
+async fn upload_form_handler(State(state): State<AppState>, session: Session) -> Response {
+    match current_user(&session).await {
+        Ok(Some(_)) => render_upload_form(&state, &session, StatusCode::OK, None, None).await,
+        Ok(None) => Redirect::to("/login").into_response(),
+        Err(err) => {
+            error!(target: "sessions", %err, "failed to read session while rendering upload form");
+            server_error_response()
+        }
+    }
+}
+
+async fn upload_submit_handler(
+    State(state): State<AppState>,
+    session: Session,
+    mut multipart: Multipart,
+) -> Response {
+    let session_user = match current_user(&session).await {
+        Ok(Some(user)) => user,
+        Ok(None) => return Redirect::to("/login").into_response(),
+        Err(err) => {
+            error!(target: "sessions", %err, "failed to read session for upload");
+            return server_error_response();
+        }
+    };
+
+    let storage_root = state.config().storage.root.clone();
+    let max_file_size = state.config().storage.max_file_size_bytes;
+    let default_expiration = state.config().defaults.file_expiration_hours;
+
+    let mut expires_in_input: Option<String> = None;
+    let mut expires_in_hours: Option<u64> = None;
+    let mut csrf_token: Option<String> = None;
+    let mut uploaded_file: Option<PersistedUpload> = None;
+
+    loop {
+        let next_field = match multipart.next_field().await {
+            Ok(field) => field,
+            Err(err) => {
+                warn!(target: "upload", %err, "malformed multipart payload");
+                return render_upload_form(
+                    &state,
+                    &session,
+                    StatusCode::BAD_REQUEST,
+                    Some("The upload form could not be processed. Please try again.".to_string()),
+                    expires_in_input,
+                )
+                .await;
+            }
+        };
+
+        let Some(field) = next_field else {
+            break;
+        };
+
+        let field_name = field.name().map(|name| name.to_string());
+        match field_name.as_deref() {
+            Some("file") => {
+                if uploaded_file.is_some() {
+                    return render_upload_form(
+                        &state,
+                        &session,
+                        StatusCode::BAD_REQUEST,
+                        Some("Only one file can be uploaded at a time.".to_string()),
+                        expires_in_input,
+                    )
+                    .await;
+                }
+
+                match persist_streamed_file(field, &storage_root, max_file_size).await {
+                    Ok(file) => {
+                        uploaded_file = Some(file);
+                    }
+                    Err(UploadStreamError::TooLarge { limit }) => {
+                        let limit_display = human_readable_size(limit);
+                        return render_upload_form(
+                            &state,
+                            &session,
+                            StatusCode::PAYLOAD_TOO_LARGE,
+                            Some(format!("Files must be {} or smaller.", limit_display)),
+                            expires_in_input,
+                        )
+                        .await;
+                    }
+                    Err(UploadStreamError::EmptyUpload) => {
+                        return render_upload_form(
+                            &state,
+                            &session,
+                            StatusCode::UNPROCESSABLE_ENTITY,
+                            Some("Select a file before uploading.".to_string()),
+                            expires_in_input,
+                        )
+                        .await;
+                    }
+                    Err(UploadStreamError::Multipart(err)) => {
+                        warn!(target: "upload", %err, "failed to read upload chunks");
+                        return render_upload_form(
+                            &state,
+                            &session,
+                            StatusCode::BAD_REQUEST,
+                            Some(
+                                "The file upload could not be read. Please try again.".to_string(),
+                            ),
+                            expires_in_input,
+                        )
+                        .await;
+                    }
+                    Err(UploadStreamError::Io(err)) => {
+                        error!(target: "upload", %err, "failed to persist uploaded file");
+                        return server_error_response();
+                    }
+                }
+            }
+            Some("expires_in") => match field.text().await {
+                Ok(value) => {
+                    let trimmed = value.trim().to_string();
+                    if !trimmed.is_empty() {
+                        match trimmed.parse::<u64>() {
+                            Ok(parsed) => {
+                                expires_in_hours = Some(parsed);
+                                expires_in_input = Some(trimmed);
+                            }
+                            Err(_) => {
+                                expires_in_input = Some(trimmed);
+                                return render_upload_form(
+                                    &state,
+                                    &session,
+                                    StatusCode::UNPROCESSABLE_ENTITY,
+                                    Some("Expiration must be provided as whole hours.".to_string()),
+                                    expires_in_input,
+                                )
+                                .await;
+                            }
+                        }
+                    }
+                }
+                Err(err) => {
+                    warn!(target: "upload", %err, "failed to read expires_in field");
+                    return render_upload_form(
+                        &state,
+                        &session,
+                        StatusCode::BAD_REQUEST,
+                        Some("Unable to read the expiration value.".to_string()),
+                        expires_in_input,
+                    )
+                    .await;
+                }
+            },
+            Some("csrf_token") => match field.text().await {
+                Ok(token) => csrf_token = Some(token),
+                Err(err) => {
+                    warn!(target: "upload", %err, "failed to read csrf field");
+                    return render_upload_form(
+                        &state,
+                        &session,
+                        StatusCode::BAD_REQUEST,
+                        Some("Unable to validate your session. Please try again.".to_string()),
+                        expires_in_input,
+                    )
+                    .await;
+                }
+            },
+            Some("notes") => {
+                if let Err(err) = field.text().await {
+                    debug!(target: "upload", %err, "discarding notes field due to read error");
+                }
+            }
+            _ => {
+                if let Err(err) = field.text().await {
+                    debug!(target: "upload", field = field_name.as_deref().unwrap_or(""), %err, "discarding unexpected multipart field");
+                }
+            }
+        }
+    }
+
+    let expires_in_for_form = expires_in_input.clone();
+
+    let Some(csrf_value) = csrf_token else {
+        return render_upload_form(
+            &state,
+            &session,
+            StatusCode::UNPROCESSABLE_ENTITY,
+            Some("Your upload session expired. Refresh and try again.".to_string()),
+            expires_in_for_form,
+        )
+        .await;
+    };
+
+    let csrf_valid = match csrf::validate_csrf_token(&session, &csrf_value).await {
+        Ok(valid) => valid,
+        Err(err) => {
+            error!(target: "csrf", %err, "failed to validate upload csrf token");
+            return server_error_response();
+        }
+    };
+
+    if !csrf_valid {
+        warn!(target: "csrf", "upload csrf token mismatch");
+        if let Err(err) = csrf::rotate_csrf_token(&session).await {
+            error!(target: "csrf", %err, "failed to rotate csrf token after mismatch");
+        }
+        return render_upload_form(
+            &state,
+            &session,
+            StatusCode::UNPROCESSABLE_ENTITY,
+            Some("Your session expired. Please try again.".to_string()),
+            expires_in_for_form,
+        )
+        .await;
+    }
+
+    let Some(upload) = uploaded_file else {
+        return render_upload_form(
+            &state,
+            &session,
+            StatusCode::UNPROCESSABLE_ENTITY,
+            Some("Select a file before uploading.".to_string()),
+            expires_in_for_form,
+        )
+        .await;
+    };
+
+    let expiration_hours = match expires_in_hours {
+        Some(hours) if hours == 0 || hours > MAX_EXPIRATION_HOURS => {
+            return render_upload_form(
+                &state,
+                &session,
+                StatusCode::UNPROCESSABLE_ENTITY,
+                Some(format!(
+                    "Expiration must be between 1 and {} hours.",
+                    MAX_EXPIRATION_HOURS
+                )),
+                expires_in_for_form,
+            )
+            .await;
+        }
+        Some(hours) => hours,
+        None => default_expiration,
+    };
+
+    let created_at = upload.completed_at.unix_timestamp();
+    let expires_at = upload
+        .completed_at
+        .checked_add(TimeDuration::hours(expiration_hours as i64))
+        .map(|dt| dt.unix_timestamp());
+
+    let size_bytes = match i64::try_from(upload.size_bytes) {
+        Ok(value) => value,
+        Err(_) => {
+            error!(target: "upload", size = upload.size_bytes, "uploaded file size exceeds supported range");
+            if let Err(err) = cleanup_orphaned_file(&upload.absolute_path).await {
+                warn!(
+                    target: "upload",
+                    path = %upload.absolute_path.display(),
+                    %err,
+                    "failed to remove oversized file from disk"
+                );
+            }
+            return server_error_response();
+        }
+    };
+
+    let mut attempts = 0usize;
+    let code = loop {
+        let candidate = generate_download_code();
+        let record = files::NewFileRecord {
+            id: &upload.file_id,
+            owner_user_id: Some(session_user.id),
+            code: &candidate,
+            original_name: &upload.original_name,
+            stored_path: &upload.storage_key,
+            size_bytes,
+            content_type: upload.content_type.as_deref(),
+            checksum: Some(upload.checksum_hex.as_str()),
+            created_at,
+            expires_at,
+        };
+
+        match files::insert_file_record(state.db(), &record).await {
+            Ok(_) => break candidate,
+            Err(err) if is_unique_violation(&err) && attempts < MAX_CODE_GENERATION_ATTEMPTS => {
+                attempts += 1;
+                debug!(target: "files", %err, attempt = attempts, "retrying file code generation");
+                continue;
+            }
+            Err(err) => {
+                error!(target: "files", %err, "failed to persist uploaded file record");
+                if let Err(clean_err) = cleanup_orphaned_file(&upload.absolute_path).await {
+                    warn!(
+                        target: "upload",
+                        path = %upload.absolute_path.display(),
+                        %clean_err,
+                        "failed to remove orphaned file after database error"
+                    );
+                }
+                return server_error_response();
+            }
+        }
+    };
+
+    if let Err(err) = csrf::rotate_csrf_token(&session).await {
+        error!(target: "csrf", %err, "failed to rotate csrf token after successful upload");
+    }
+
+    info!(
+        target: "upload",
+        user_id = session_user.id,
+        username = session_user.username,
+        file_id = upload.file_id,
+        code = code,
+        size_bytes = upload.size_bytes,
+        "file uploaded successfully"
+    );
+
+    Redirect::to(&format!("/f/{}", code)).into_response()
+}
+
+#[derive(Debug)]
+struct PersistedUpload {
+    file_id: String,
+    storage_key: String,
+    absolute_path: PathBuf,
+    original_name: String,
+    size_bytes: u64,
+    content_type: Option<String>,
+    checksum_hex: String,
+    completed_at: OffsetDateTime,
+}
+
+#[derive(Debug)]
+enum UploadStreamError {
+    Io(std::io::Error),
+    Multipart(MultipartError),
+    TooLarge { limit: u64 },
+    EmptyUpload,
+}
+
+fn map_user_file_summary_for_home(record: files::UserFileSummary) -> Option<HomeUploadRow> {
+    if record.size_bytes < 0 {
+        debug!(
+            target: "files",
+            size = record.size_bytes,
+            code = record.code,
+            "ignoring file with negative size"
+        );
+        return None;
+    }
+
+    let size_display = human_readable_size(record.size_bytes as u64);
+    let created_display = match OffsetDateTime::from_unix_timestamp(record.created_at) {
+        Ok(dt) => format!(
+            "{:04}-{:02}-{:02} {:02}:{:02} UTC",
+            dt.year(),
+            u8::from(dt.month()),
+            dt.day(),
+            dt.hour(),
+            dt.minute()
+        ),
+        Err(err) => {
+            debug!(
+                target: "files",
+                %err,
+                created_at = record.created_at,
+                code = record.code,
+                "invalid created_at stored for file"
+            );
+            return None;
+        }
+    };
+
+    Some(HomeUploadRow {
+        code: record.code,
+        original_name: record.original_name,
+        size_display,
+        created_display,
+    })
+}
+
+fn human_readable_size(bytes: u64) -> String {
+    const UNITS: [&str; 5] = ["B", "KB", "MB", "GB", "TB"];
+    let mut value = bytes as f64;
+    let mut unit_index = 0;
+
+    while value >= 1024.0 && unit_index < UNITS.len() - 1 {
+        value /= 1024.0;
+        unit_index += 1;
+    }
+
+    if unit_index == 0 {
+        format!("{} {}", bytes, UNITS[unit_index])
+    } else if value >= 100.0 {
+        format!("{value:.0} {}", UNITS[unit_index])
+    } else if value >= 10.0 {
+        format!("{value:.1} {}", UNITS[unit_index])
+    } else {
+        format!("{value:.2} {}", UNITS[unit_index])
+    }
+}
+
+fn generate_download_code() -> String {
+    let raw = nanoid::nanoid!(CODE_TOTAL_LENGTH, &CODE_ALPHABET);
+    format!(
+        "{}-{}",
+        &raw[..CODE_SEGMENT_LENGTH],
+        &raw[CODE_SEGMENT_LENGTH..]
+    )
+}
+
+fn sanitize_filename(raw: Option<&str>) -> String {
+    const FALLBACK: &str = "upload.bin";
+    let Some(name) = raw else {
+        return FALLBACK.to_string();
+    };
+
+    let trimmed = name.trim();
+    if trimmed.is_empty() {
+        return FALLBACK.to_string();
+    }
+
+    let candidate = Path::new(trimmed)
+        .file_name()
+        .and_then(|segment| segment.to_str())
+        .unwrap_or(FALLBACK);
+
+    let cleaned: String = candidate.chars().filter(|c| !c.is_control()).collect();
+    let cleaned = cleaned.trim();
+    if cleaned.is_empty() {
+        return FALLBACK.to_string();
+    }
+
+    cleaned.chars().take(255).collect()
+}
+
+async fn render_upload_form(
+    state: &AppState,
+    session: &Session,
+    status: StatusCode,
+    error_message: Option<String>,
+    expires_in_value: Option<String>,
+) -> Response {
+    let layout = layout_from_session(state, session, "Upload").await;
+
+    let max_file_size_display = human_readable_size(state.config().storage.max_file_size_bytes);
+    let expires_value = expires_in_value
+        .unwrap_or_else(|| state.config().defaults.file_expiration_hours.to_string());
+
+    let mut template = UploadTemplate::new(
+        layout,
+        max_file_size_display,
+        MAX_EXPIRATION_HOURS,
+        expires_value,
+    );
+
+    if let Some(message) = error_message {
+        template = template.with_error_message(message);
+    }
+
+    (status, HtmlTemplate::new(template)).into_response()
+}
+
+async fn persist_streamed_file(
+    field: Field<'_>,
+    storage_root: &Path,
+    max_file_size: u64,
+) -> Result<PersistedUpload, UploadStreamError> {
+    let mut field = field;
+    let started_at = OffsetDateTime::now_utc();
+    let original_name = sanitize_filename(field.file_name());
+    let content_type = field.content_type().map(|mime| mime.to_string());
+    let file_id = Ulid::new().to_string();
+
+    let date_path = format!(
+        "{:04}/{:02}/{:02}",
+        started_at.year(),
+        u8::from(started_at.month()),
+        started_at.day()
+    );
+
+    let final_dir = storage_root.join(&date_path);
+    fs::create_dir_all(&final_dir)
+        .await
+        .map_err(UploadStreamError::Io)?;
+
+    let temp_path = final_dir.join(format!("{}.uploading", file_id));
+    let final_path = final_dir.join(&file_id);
+
+    let mut file = fs::File::create(&temp_path)
+        .await
+        .map_err(UploadStreamError::Io)?;
+    let mut hasher = Sha256::new();
+    let mut bytes_written: u64 = 0;
+    let mut saw_data = false;
+
+    while let Some(chunk) = field.chunk().await.map_err(UploadStreamError::Multipart)? {
+        if chunk.is_empty() {
+            continue;
+        }
+
+        saw_data = true;
+        bytes_written = bytes_written.saturating_add(chunk.len() as u64);
+        if bytes_written > max_file_size {
+            drop(file);
+            let _ = fs::remove_file(&temp_path).await;
+            return Err(UploadStreamError::TooLarge {
+                limit: max_file_size,
+            });
+        }
+
+        if let Err(err) = file.write_all(&chunk).await {
+            drop(file);
+            let _ = fs::remove_file(&temp_path).await;
+            return Err(UploadStreamError::Io(err));
+        }
+
+        hasher.update(&chunk);
+    }
+
+    if let Err(err) = file.flush().await {
+        drop(file);
+        let _ = fs::remove_file(&temp_path).await;
+        return Err(UploadStreamError::Io(err));
+    }
+    drop(file);
+
+    if !saw_data {
+        let _ = fs::remove_file(&temp_path).await;
+        return Err(UploadStreamError::EmptyUpload);
+    }
+
+    if let Err(err) = fs::rename(&temp_path, &final_path).await {
+        let _ = fs::remove_file(&temp_path).await;
+        return Err(UploadStreamError::Io(err));
+    }
+
+    let completed_at = OffsetDateTime::now_utc();
+    let storage_key = format!("{}/{}", date_path, file_id);
+    let checksum_hex = format!("{:x}", hasher.finalize());
+
+    Ok(PersistedUpload {
+        file_id,
+        storage_key,
+        absolute_path: final_path,
+        original_name,
+        size_bytes: bytes_written,
+        content_type,
+        checksum_hex,
+        completed_at,
+    })
+}
+
+async fn cleanup_orphaned_file(path: &Path) -> Result<(), std::io::Error> {
+    match fs::remove_file(path).await {
+        Ok(_) => Ok(()),
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(err) => Err(err),
+    }
+}
+
+fn is_unique_violation(err: &sqlx::Error) -> bool {
+    match err {
+        sqlx::Error::Database(db_err) => db_err
+            .code()
+            .map(|code| code.as_ref() == "2067" || code.as_ref() == "1555")
+            .unwrap_or(false),
+        _ => false,
+    }
 }
 
 async fn login_form_handler(State(state): State<AppState>, session: Session) -> Response {
