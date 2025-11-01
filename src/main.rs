@@ -1,5 +1,6 @@
 mod app_state;
 mod auth;
+mod cleanup;
 mod config;
 mod csrf;
 mod database;
@@ -124,6 +125,9 @@ async fn main() -> Result<(), AppError> {
 
     // Create app state
     let app_state = AppState::new(db_pool, config.clone())?;
+
+    // Spawn periodic cleanup job for expired files and sessions
+    cleanup::spawn_cleanup_job(app_state.clone());
 
     // Configure per-route upload limits with a small multipart overhead allowance
     let upload_body_limit = config

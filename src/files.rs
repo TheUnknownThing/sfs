@@ -1,4 +1,4 @@
-use sqlx::SqlitePool;
+use sqlx::{Executor, SqlitePool};
 
 /// Represents a new file ready to be persisted to the database.
 pub struct NewFileRecord<'a> {
@@ -37,6 +37,14 @@ pub struct UserFileSummary {
     pub original_name: String,
     pub size_bytes: i64,
     pub created_at: i64,
+}
+
+/// Minimal metadata required to perform cleanup for an expired file.
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct ExpiredFileForCleanup {
+    pub id: String,
+    pub code: String,
+    pub stored_path: String,
 }
 
 /// Insert a freshly uploaded file into the database.
@@ -172,6 +180,69 @@ pub async fn update_last_accessed(
     .bind(accessed_at)
     .bind(file_id)
     .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
+/// Retrieve a batch of expired files for background cleanup.
+pub async fn list_expired_files_for_cleanup(
+    pool: &SqlitePool,
+    now: i64,
+    limit: i64,
+) -> Result<Vec<ExpiredFileForCleanup>, sqlx::Error> {
+    sqlx::query_as::<_, ExpiredFileForCleanup>(
+        r#"
+                SELECT id, code, stored_path
+        FROM files
+        WHERE expires_at IS NOT NULL
+          AND expires_at <= ?
+        ORDER BY expires_at ASC
+        LIMIT ?
+        "#,
+    )
+    .bind(now)
+    .bind(limit)
+    .fetch_all(pool)
+    .await
+}
+
+/// Load the latest representation of an expired file inside a transaction to
+/// guard against concurrent updates.
+pub async fn load_expired_file_for_cleanup(
+    executor: impl Executor<'_, Database = sqlx::Sqlite>,
+    file_id: &str,
+    now: i64,
+) -> Result<Option<ExpiredFileForCleanup>, sqlx::Error> {
+    sqlx::query_as::<_, ExpiredFileForCleanup>(
+        r#"
+                SELECT id, code, stored_path
+        FROM files
+        WHERE id = ?
+          AND expires_at IS NOT NULL
+          AND expires_at <= ?
+        LIMIT 1
+        "#,
+    )
+    .bind(file_id)
+    .bind(now)
+    .fetch_optional(executor)
+    .await
+}
+
+/// Delete a file record after its corresponding blob has been removed.
+pub async fn delete_file_record(
+    executor: impl Executor<'_, Database = sqlx::Sqlite>,
+    file_id: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        r#"
+        DELETE FROM files
+        WHERE id = ?
+        "#,
+    )
+    .bind(file_id)
+    .execute(executor)
     .await?;
 
     Ok(())
