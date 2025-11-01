@@ -17,7 +17,7 @@ use auth::{
 use axum::{
     extract::{
         multipart::{Field, Multipart, MultipartError},
-        ConnectInfo, State,
+        ConnectInfo, Path as AxumPath, State,
     },
     http::{header, HeaderValue, StatusCode},
     response::{IntoResponse, Redirect, Response},
@@ -36,7 +36,8 @@ use std::{
     path::{Path, PathBuf},
 };
 use templates::{
-    HomeTemplate, HomeUploadRow, HtmlTemplate, LayoutContext, LoginTemplate, UploadTemplate,
+    FileTemplate, HomeTemplate, HomeUploadRow, HtmlTemplate, LayoutContext, LoginTemplate,
+    UploadTemplate,
 };
 use thiserror::Error;
 use time::{Duration as TimeDuration, OffsetDateTime};
@@ -126,6 +127,8 @@ async fn main() -> Result<(), AppError> {
     // Create router with middleware in correct order: Trace -> Sessions -> Routes
     let app = Router::new()
         .route("/", get(home_handler))
+        .route("/f/:code", get(file_lookup_handler))
+        .route("/f/:code/link", post(file_direct_link_handler))
         .route("/login", get(login_form_handler).post(login_submit_handler))
         .route("/logout", post(logout_handler))
         .merge(upload_routes)
@@ -180,6 +183,133 @@ async fn home_handler(State(state): State<AppState>, session: Session) -> impl I
     }
 
     HtmlTemplate::new(template)
+}
+
+async fn file_lookup_handler(
+    State(state): State<AppState>,
+    session: Session,
+    AxumPath(raw_code): AxumPath<String>,
+) -> Response {
+    let Some(code) = normalize_lookup_code(&raw_code) else {
+        return file_not_found_response();
+    };
+
+    let record = match fetch_active_file_by_code(&state, &code).await {
+        Ok(record) => record,
+        Err(response) => return response,
+    };
+
+    let files::FileLookup {
+        original_name,
+        size_bytes,
+        content_type,
+        checksum,
+        created_at,
+        expires_at,
+        ..
+    } = record;
+
+    if size_bytes < 0 {
+        error!(
+            target = "files",
+            code = %code,
+            size = size_bytes,
+            "stored file size is invalid"
+        );
+        return server_error_response();
+    }
+
+    let created_display = match OffsetDateTime::from_unix_timestamp(created_at) {
+        Ok(dt) => format_datetime_utc(dt),
+        Err(err) => {
+            error!(
+                target = "files",
+                %err,
+                code = %code,
+                created_at,
+                "invalid created_at stored for file"
+            );
+            return server_error_response();
+        }
+    };
+
+    let expires_display = match expires_at {
+        Some(ts) => match OffsetDateTime::from_unix_timestamp(ts) {
+            Ok(dt) => Some(format_datetime_utc(dt)),
+            Err(err) => {
+                error!(
+                    target = "files",
+                    %err,
+                    code = %code,
+                    expires_at = ts,
+                    "invalid expires_at stored for file"
+                );
+                return server_error_response();
+            }
+        },
+        None => None,
+    };
+
+    let size_display = human_readable_size(size_bytes as u64);
+    let layout = layout_from_session(&state, &session, "File details").await;
+
+    let template = FileTemplate::new(
+        layout,
+        code,
+        original_name,
+        size_display,
+        created_display,
+        expires_display,
+    )
+    .with_content_type(content_type)
+    .with_checksum(checksum);
+
+    HtmlTemplate::new(template).into_response()
+}
+
+async fn file_direct_link_handler(
+    State(state): State<AppState>,
+    session: Session,
+    AxumPath(raw_code): AxumPath<String>,
+    Form(form): Form<GenerateLinkForm>,
+) -> Response {
+    let csrf_valid = match csrf::validate_csrf_token(&session, &form.csrf_token).await {
+        Ok(valid) => valid,
+        Err(err) => {
+            error!(target: "csrf", %err, "failed to validate CSRF token for direct link");
+            return server_error_response();
+        }
+    };
+
+    if !csrf_valid {
+        warn!(target: "csrf", "invalid CSRF token on direct link request");
+        if let Err(err) = csrf::rotate_csrf_token(&session).await {
+            error!(target: "csrf", %err, "failed to rotate CSRF token after invalid direct link request");
+        }
+        return (StatusCode::FORBIDDEN, "Invalid CSRF token").into_response();
+    }
+
+    let Some(code) = normalize_lookup_code(&raw_code) else {
+        return file_not_found_response();
+    };
+
+    let record = match fetch_active_file_by_code(&state, &code).await {
+        Ok(record) => record,
+        Err(response) => return response,
+    };
+
+    warn!(
+        target: "links",
+        code = %code,
+        file_id = %record.id,
+        "direct link generation requested before implementation"
+    );
+
+    (
+        StatusCode::NOT_IMPLEMENTED,
+        "Direct link generation is not available yet.",
+    )
+        .into_response()
 }
 
 async fn upload_form_handler(State(state): State<AppState>, session: Session) -> Response {
@@ -531,14 +661,7 @@ fn map_user_file_summary_for_home(record: files::UserFileSummary) -> Option<Home
 
     let size_display = human_readable_size(record.size_bytes as u64);
     let created_display = match OffsetDateTime::from_unix_timestamp(record.created_at) {
-        Ok(dt) => format!(
-            "{:04}-{:02}-{:02} {:02}:{:02} UTC",
-            dt.year(),
-            u8::from(dt.month()),
-            dt.day(),
-            dt.hour(),
-            dt.minute()
-        ),
+        Ok(dt) => format_datetime_utc(dt),
         Err(err) => {
             debug!(
                 target: "files",
@@ -580,6 +703,17 @@ fn human_readable_size(bytes: u64) -> String {
     }
 }
 
+fn format_datetime_utc(dt: OffsetDateTime) -> String {
+    format!(
+        "{:04}-{:02}-{:02} {:02}:{:02} UTC",
+        dt.year(),
+        u8::from(dt.month()),
+        dt.day(),
+        dt.hour(),
+        dt.minute()
+    )
+}
+
 fn generate_download_code() -> String {
     let raw = nanoid::nanoid!(CODE_TOTAL_LENGTH, &CODE_ALPHABET);
     format!(
@@ -587,6 +721,46 @@ fn generate_download_code() -> String {
         &raw[..CODE_SEGMENT_LENGTH],
         &raw[CODE_SEGMENT_LENGTH..]
     )
+}
+
+fn normalize_lookup_code(raw: &str) -> Option<String> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    let mut normalized = String::with_capacity(CODE_TOTAL_LENGTH + 1);
+    let mut collected = Vec::with_capacity(CODE_TOTAL_LENGTH);
+
+    for ch in trimmed.chars() {
+        if ch == '-' || ch.is_ascii_whitespace() {
+            continue;
+        }
+
+        if !ch.is_ascii() {
+            return None;
+        }
+
+        collected.push(ch.to_ascii_uppercase());
+    }
+
+    if collected.len() != CODE_TOTAL_LENGTH {
+        return None;
+    }
+
+    for (index, ch) in collected.into_iter().enumerate() {
+        if !CODE_ALPHABET.contains(&ch) {
+            return None;
+        }
+
+        if index == CODE_SEGMENT_LENGTH {
+            normalized.push('-');
+        }
+
+        normalized.push(ch);
+    }
+
+    Some(normalized)
 }
 
 fn sanitize_filename(raw: Option<&str>) -> String {
@@ -737,6 +911,58 @@ async fn cleanup_orphaned_file(path: &Path) -> Result<(), std::io::Error> {
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(()),
         Err(err) => Err(err),
     }
+}
+
+fn file_not_found_response() -> Response {
+    (
+        StatusCode::NOT_FOUND,
+        "We couldn't find a file with that code. Double-check the code and try again.",
+    )
+        .into_response()
+}
+
+fn file_expired_response() -> Response {
+    (
+        StatusCode::GONE,
+        "This file is no longer available. The link has expired.",
+    )
+        .into_response()
+}
+
+async fn fetch_active_file_by_code(
+    state: &AppState,
+    code: &str,
+) -> Result<files::FileLookup, Response> {
+    let lookup_result = match files::find_file_by_code(state.db(), code).await {
+        Ok(record) => record,
+        Err(err) => {
+            error!(
+                target: "files",
+                %err,
+                code = %code,
+                "database error while looking up file by code"
+            );
+            return Err(server_error_response());
+        }
+    };
+
+    let Some(record) = lookup_result else {
+        return Err(file_not_found_response());
+    };
+
+    if let Some(expires_at) = record.expires_at {
+        if expires_at <= OffsetDateTime::now_utc().unix_timestamp() {
+            debug!(
+                target: "files",
+                code = %code,
+                expires_at,
+                "file lookup attempted after expiration"
+            );
+            return Err(file_expired_response());
+        }
+    }
+
+    Ok(record)
 }
 
 fn is_unique_violation(err: &sqlx::Error) -> bool {
@@ -1024,6 +1250,11 @@ struct LoginForm {
     csrf_token: String,
     username: String,
     password: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct GenerateLinkForm {
+    csrf_token: String,
 }
 
 #[derive(Debug, Deserialize)]

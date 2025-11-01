@@ -14,6 +14,22 @@ pub struct NewFileRecord<'a> {
     pub expires_at: Option<i64>,
 }
 
+/// Metadata exposed when looking up a file by its public code.
+#[allow(dead_code)]
+#[derive(Debug, sqlx::FromRow)]
+pub struct FileLookup {
+    pub id: String,
+    pub owner_user_id: Option<i64>,
+    pub code: String,
+    pub original_name: String,
+    pub stored_path: String,
+    pub size_bytes: i64,
+    pub content_type: Option<String>,
+    pub checksum: Option<String>,
+    pub created_at: i64,
+    pub expires_at: Option<i64>,
+}
+
 /// Lightweight summary of a user's upload for dashboard listings.
 #[derive(Debug, sqlx::FromRow)]
 pub struct UserFileSummary {
@@ -81,5 +97,33 @@ pub async fn list_recent_files_for_user(
     .bind(user_id)
     .bind(limit)
     .fetch_all(pool)
+    .await
+}
+
+/// Lookup a file by its public sharing code.
+pub async fn find_file_by_code(
+    pool: &SqlitePool,
+    code: &str,
+) -> Result<Option<FileLookup>, sqlx::Error> {
+    sqlx::query_as::<_, FileLookup>(
+        r#"
+        SELECT
+            id,
+            owner_user_id,
+            code,
+            original_name,
+            stored_path,
+            size_bytes,
+            content_type,
+            checksum,
+            created_at,
+            expires_at
+        FROM files
+        WHERE code = ?
+        LIMIT 1
+        "#,
+    )
+    .bind(code)
+    .fetch_optional(pool)
     .await
 }

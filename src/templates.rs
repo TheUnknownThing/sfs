@@ -211,17 +211,48 @@ pub struct HomeUploadRow {
     pub created_display: String,
 }
 
-#[allow(dead_code)]
 #[derive(Template)]
 #[template(path = "file.html", escape = "html")]
 pub struct FileTemplate {
     pub layout: LayoutContext,
+    pub code: String,
+    pub original_name: String,
+    pub size_display: String,
+    pub created_display: String,
+    pub expires_display: Option<String>,
+    pub content_type: Option<String>,
+    pub checksum: Option<String>,
 }
 
 impl FileTemplate {
-    #[allow(dead_code)]
-    pub fn new(layout: LayoutContext) -> Self {
-        Self { layout }
+    pub fn new(
+        layout: LayoutContext,
+        code: impl Into<String>,
+        original_name: impl Into<String>,
+        size_display: impl Into<String>,
+        created_display: impl Into<String>,
+        expires_display: Option<String>,
+    ) -> Self {
+        Self {
+            layout,
+            code: code.into(),
+            original_name: original_name.into(),
+            size_display: size_display.into(),
+            created_display: created_display.into(),
+            expires_display,
+            content_type: None,
+            checksum: None,
+        }
+    }
+
+    pub fn with_content_type(mut self, content_type: Option<String>) -> Self {
+        self.content_type = content_type;
+        self
+    }
+
+    pub fn with_checksum(mut self, checksum: Option<String>) -> Self {
+        self.checksum = checksum;
+        self
     }
 }
 

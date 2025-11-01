@@ -2,7 +2,62 @@
 
 {% block content %}
 <section>
-    <h1>File details</h1>
-    <p>File details view placeholder.</p>
+    <hgroup>
+        <h1>File details</h1>
+        <p>Share the code below to let anyone check the status of this file.</p>
+    </hgroup>
+
+    <article>
+        <header>
+            <h2>{{ original_name }}</h2>
+            <p>
+                <span class="secondary">Lookup code</span><br>
+                <code id="lookup-code">{{ code }}</code>
+            </p>
+            <p>
+                <button type="button" class="secondary" data-copy data-copy-target="#lookup-code">
+                    <i data-feather="copy" aria-hidden="true"></i>
+                    Copy code
+                </button>
+            </p>
+        </header>
+
+        <dl>
+            <dt>File name</dt>
+            <dd>{{ original_name }}</dd>
+            <dt>Size</dt>
+            <dd>{{ size_display }}</dd>
+            <dt>Uploaded</dt>
+            <dd>{{ created_display }}</dd>
+            <dt>Expires</dt>
+            <dd>
+                {% if let Some(expires) = expires_display %}
+                {{ expires }}
+                {% else %}
+                Never
+                {% endif %}
+            </dd>
+            {% if let Some(kind) = content_type %}
+            <dt>Content type</dt>
+            <dd>{{ kind }}</dd>
+            {% endif %}
+            {% if let Some(signature) = checksum %}
+            <dt>Checksum</dt>
+            <dd><code>{{ signature }}</code></dd>
+            {% endif %}
+        </dl>
+
+        <footer>
+            <form method="post" action="/f/{{ code }}/link">
+                {% if let Some(csrf) = layout.csrf %}
+                <input type="hidden" name="csrf_token" value="{{ csrf.token }}">
+                {% endif %}
+                <button type="submit" class="primary">
+                    <i data-feather="link"></i>
+                    Generate direct link
+                </button>
+            </form>
+        </footer>
+    </article>
 </section>
 {% endblock %}
