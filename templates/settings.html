@@ -2,93 +2,128 @@
 
 {% block content %}
 <section>
-    <h1>Admin Settings</h1>
+    <hgroup>
+        <h1>
+            <i data-feather="settings" style="width: 28px; height: 28px; vertical-align: middle; margin-right: 0.5rem;"></i>
+            Admin Settings
+        </h1>
+        <p>Configure global application settings and preferences.</p>
+    </hgroup>
 
     {% if let Some(message) = success_message %}
-    <article class="success">{{ message }}</article>
+    <div class="card success" role="status">
+        <strong>✓ Success!</strong> {{ message }}
+    </div>
     {% endif %}
 
     {% if let Some(message) = general_error %}
-    <article class="error">{{ message }}</article>
+    <div class="card error" role="alert">
+        <strong>Error:</strong> {{ message }}
+    </div>
     {% endif %}
 
-    <form method="post" action="/settings" class="grid">
-        {% if let Some(csrf) = layout.csrf %}
-        <input type="hidden" name="csrf_token" value="{{ csrf.token }}">
-        {% endif %}
+    <article>
+        <form method="post" action="/settings">
+            {% if let Some(csrf) = layout.csrf %}
+            <input type="hidden" name="csrf_token" value="{{ csrf.token }}">
+            {% endif %}
 
-        <label for="ui_brand_name">Brand name</label>
-        <input
-            type="text"
-            id="ui_brand_name"
-            name="ui_brand_name"
-            value="{{ form.ui_brand_name }}"
-            minlength="2"
-            maxlength="80"
-            required>
-        {% if let Some(err) = field_errors.ui_brand_name %}
-        <small class="error">{{ err }}</small>
-        {% else %}
-        <small>Displayed in the header and page titles.</small>
-        {% endif %}
+            <div class="form-section">
+                <h3><i data-feather="eye" style="width: 20px; height: 20px; vertical-align: middle; margin-right: 0.5rem;"></i>Appearance</h3>
+                <label for="ui_brand_name">
+                    Brand name
+                    <input
+                        type="text"
+                        id="ui_brand_name"
+                        name="ui_brand_name"
+                        value="{{ form.ui_brand_name }}"
+                        minlength="2"
+                        maxlength="80"
+                        required>
+                    {% if let Some(err) = field_errors.ui_brand_name %}
+                    <small class="error">{{ err }}</small>
+                    {% else %}
+                    <small>Displayed in the header and page titles.</small>
+                    {% endif %}
+                </label>
+            </div>
 
-        <label for="max_file_size_bytes">Maximum upload size (bytes)</label>
-        <input
-            type="number"
-            id="max_file_size_bytes"
-            name="max_file_size_bytes"
-            value="{{ form.max_file_size_bytes }}"
-            min="1048576"
-            max="5368709120"
-            step="1"
-            required>
-        {% if let Some(err) = field_errors.max_file_size_bytes %}
-        <small class="error">{{ err }}</small>
-        {% else %}
-        <small>Enter the maximum file size in bytes (e.g. 52428800 for 50 MB).</small>
-        {% endif %}
+            <div class="form-section">
+                <h3><i data-feather="upload-cloud" style="width: 20px; height: 20px; vertical-align: middle; margin-right: 0.5rem;"></i>Upload Settings</h3>
+                <label for="max_file_size_bytes">
+                    Maximum upload size (bytes)
+                    <input
+                        type="number"
+                        id="max_file_size_bytes"
+                        name="max_file_size_bytes"
+                        value="{{ form.max_file_size_bytes }}"
+                        min="1048576"
+                        max="5368709120"
+                        step="1"
+                        required>
+                    {% if let Some(err) = field_errors.max_file_size_bytes %}
+                    <small class="error">{{ err }}</small>
+                    {% else %}
+                    <small>Enter the maximum file size in bytes (e.g. 52428800 for 50 MB).</small>
+                    {% endif %}
+                </label>
 
-        <label for="default_expiration_hours">Default expiration (hours)</label>
-        <input
-            type="number"
-            id="default_expiration_hours"
-            name="default_expiration_hours"
-            value="{{ form.default_expiration_hours }}"
-            min="1"
-            max="2160"
-            required>
-        {% if let Some(err) = field_errors.default_expiration_hours %}
-        <small class="error">{{ err }}</small>
-        {% else %}
-        <small>New uploads inherit this expiration unless overridden.</small>
-        {% endif %}
+                <label for="default_expiration_hours">
+                    Default expiration (hours)
+                    <input
+                        type="number"
+                        id="default_expiration_hours"
+                        name="default_expiration_hours"
+                        value="{{ form.default_expiration_hours }}"
+                        min="1"
+                        max="2160"
+                        required>
+                    {% if let Some(err) = field_errors.default_expiration_hours %}
+                    <small class="error">{{ err }}</small>
+                    {% else %}
+                    <small>New uploads inherit this expiration unless overridden.</small>
+                    {% endif %}
+                </label>
+            </div>
 
-        <label for="direct_link_ttl_minutes">Direct link lifetime (minutes)</label>
-        <input
-            type="number"
-            id="direct_link_ttl_minutes"
-            name="direct_link_ttl_minutes"
-            value="{{ form.direct_link_ttl_minutes }}"
-            min="1"
-            max="1440"
-            required>
-        {% if let Some(err) = field_errors.direct_link_ttl_minutes %}
-        <small class="error">{{ err }}</small>
-        {% else %}
-        <small>Controls how long new direct download tokens remain valid.</small>
-        {% endif %}
+            <div class="form-section">
+                <h3><i data-feather="link" style="width: 20px; height: 20px; vertical-align: middle; margin-right: 0.5rem;"></i>Link Settings</h3>
+                <label for="direct_link_ttl_minutes">
+                    Direct link lifetime (minutes)
+                    <input
+                        type="number"
+                        id="direct_link_ttl_minutes"
+                        name="direct_link_ttl_minutes"
+                        value="{{ form.direct_link_ttl_minutes }}"
+                        min="1"
+                        max="1440"
+                        required>
+                    {% if let Some(err) = field_errors.direct_link_ttl_minutes %}
+                    <small class="error">{{ err }}</small>
+                    {% else %}
+                    <small>Controls how long new direct download tokens remain valid.</small>
+                    {% endif %}
+                </label>
+            </div>
 
-        <label for="allow_anonymous_download" class="inline">
-            <input
-                type="checkbox"
-                id="allow_anonymous_download"
-                name="allow_anonymous_download"
-                {% if form.allow_anonymous_download %}checked{% endif %}>
-            Allow anonymous file downloads
-        </label>
-        <small>When disabled, only authenticated users may download files.</small>
+            <div class="form-section">
+                <h3><i data-feather="shield" style="width: 20px; height: 20px; vertical-align: middle; margin-right: 0.5rem;"></i>Security</h3>
+                <label for="allow_anonymous_download">
+                    <input
+                        type="checkbox"
+                        id="allow_anonymous_download"
+                        name="allow_anonymous_download"
+                        {% if form.allow_anonymous_download %}checked{% endif %}>
+                    Allow anonymous file downloads
+                </label>
+                <small>When disabled, only authenticated users may download files.</small>
+            </div>
 
-        <button type="submit">Save settings</button>
-    </form>
+            <button type="submit" class="icon-button">
+                <i data-feather="save"></i>
+                Save settings
+            </button>
+        </form>
+    </article>
 </section>
 {% endblock %}

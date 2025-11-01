@@ -1,43 +1,41 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section>
+<section style="text-align: center; padding: 3rem 0;">
     <hgroup>
-        <h1>{{ layout.brand_name }}</h1>
-        <p>Secure file sharing, streamlined for teams.</p>
+        <h1 style="font-size: 2.5rem; margin-bottom: 1rem;">{{ layout.brand_name }}</h1>
+        <p style="font-size: 1.25rem; color: var(--pico-muted-color);">Secure file sharing, streamlined for teams.</p>
     </hgroup>
-    {% if layout.current_user.is_some() %}
-    <p>
-        <a role="button" href="/upload">Upload a file</a>
-        <a role="button" class="secondary" href="/settings">Settings</a>
-    </p>
-    {% else %}
-    <p>
-        <a role="button" class="secondary" href="/login">Log in</a>
-    </p>
-    {% endif %}
+    <div class="button-group" style="justify-content: center; margin-top: 2rem;">
+        {% if layout.current_user.is_some() %}
+        <a role="button" href="/upload" class="icon-button">
+            <i data-feather="upload"></i>
+            Upload a file
+        </a>
+        <a role="button" class="secondary outline" href="/settings">Settings</a>
+        {% else %}
+        <a role="button" href="/login" class="icon-button">
+            <i data-feather="log-in"></i>
+            Log in
+        </a>
+        {% endif %}
+    </div>
 </section>
-<section>
-    <h2>Start in seconds</h2>
-    {% if layout.current_user.is_some() %}
-    <p>Manage uploads, configure access policies, and monitor usage with confidence.</p>
-    {% else %}
-    <p>Sign in to manage uploads, configure access policies, and monitor usage with confidence.</p>
-    {% endif %}
-    <ul>
-        <li>Encrypted storage with expiring links</li>
-        <li>Granular access controls</li>
-        <li>Audit-ready activity logs</li>
-    </ul>
-</section>
+
 {% if layout.current_user.is_some() %}
 <section>
-    <h2>Recent uploads</h2>
+    <hgroup>
+        <h2><i data-feather="clock" style="width: 24px; height: 24px; vertical-align: middle; margin-right: 0.5rem;"></i>Recent uploads</h2>
+    </hgroup>
     {% if recent_uploads.is_empty() %}
-    <p>No uploads yet. <a href="/upload">Upload your first file</a> to get started.</p>
+    <article>
+        <p style="text-align: center; color: var(--pico-muted-color); padding: 2rem;">
+            No uploads yet. <a href="/upload">Upload your first file</a> to get started.
+        </p>
+    </article>
     {% else %}
-    <div class="overflow-auto">
-        <table>
+    <div class="table-wrapper">
+        <table role="grid">
             <thead>
                 <tr>
                     <th scope="col">File name</th>
@@ -49,10 +47,15 @@
             <tbody>
             {% for upload in recent_uploads %}
                 <tr>
-                    <td><a href="/f/{{ upload.code }}">{{ upload.original_name }}</a></td>
-                    <td><code>{{ upload.code }}</code></td>
+                    <td>
+                        <a href="/f/{{ upload.code }}" style="font-weight: 500;">
+                            <i data-feather="file" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 0.5rem;"></i>
+                            {{ upload.original_name }}
+                        </a>
+                    </td>
+                    <td><code style="font-size: 0.875rem;">{{ upload.code }}</code></td>
                     <td>{{ upload.size_display }}</td>
-                    <td>{{ upload.created_display }}</td>
+                    <td><time>{{ upload.created_display }}</time></td>
                 </tr>
             {% endfor %}
             </tbody>

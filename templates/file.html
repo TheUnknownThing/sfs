@@ -1,49 +1,64 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section>
+<section style="max-width: 800px; margin: 0 auto;">
     <hgroup>
-        <h1>File details</h1>
+        <h1>
+            <i data-feather="file-text" style="width: 28px; height: 28px; vertical-align: middle; margin-right: 0.5rem;"></i>
+            File details
+        </h1>
         <p>Share the code below to let anyone check the status of this file.</p>
     </hgroup>
 
     <article>
         <header>
-            <h2>{{ original_name }}</h2>
-            <p>
-                <span class="secondary">Lookup code</span><br>
-                <code id="lookup-code">{{ code }}</code>
-            </p>
-            <p>
-                <button type="button" class="secondary" data-copy data-copy-target="#lookup-code">
-                    <i data-feather="copy" aria-hidden="true"></i>
-                    Copy code
-                </button>
-            </p>
+            <h2 style="display: flex; align-items: center; gap: 0.5rem; word-break: break-all;">
+                <i data-feather="file" style="width: 24px; height: 24px; flex-shrink: 0;"></i>
+                {{ original_name }}
+            </h2>
         </header>
 
+        <div class="card" style="background: color-mix(in srgb, var(--pico-primary) 10%, var(--pico-card-background-color)); border-color: var(--pico-primary);">
+            <label for="lookup-code" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--pico-primary);">
+                <i data-feather="hash" style="width: 16px; height: 16px; vertical-align: middle;"></i>
+                Lookup Code
+            </label>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <input id="lookup-code" type="text" value="{{ code }}" readonly style="flex: 1; font-family: monospace; font-size: 1.1rem; font-weight: bold;">
+                <button type="button" class="secondary outline" data-copy data-copy-target="#lookup-code" style="white-space: nowrap;">
+                    <i data-feather="copy" aria-hidden="true"></i>
+                    Copy
+                </button>
+            </div>
+        </div>
+
         <dl>
-            <dt>File name</dt>
+            <dt><i data-feather="file" style="width: 14px; height: 14px; vertical-align: middle;"></i> File name</dt>
             <dd>{{ original_name }}</dd>
-            <dt>Size</dt>
-            <dd>{{ size_display }}</dd>
-            <dt>Uploaded</dt>
-            <dd>{{ created_display }}</dd>
-            <dt>Expires</dt>
+            
+            <dt><i data-feather="hard-drive" style="width: 14px; height: 14px; vertical-align: middle;"></i> Size</dt>
+            <dd><strong>{{ size_display }}</strong></dd>
+            
+            <dt><i data-feather="upload" style="width: 14px; height: 14px; vertical-align: middle;"></i> Uploaded</dt>
+            <dd><time>{{ created_display }}</time></dd>
+            
+            <dt><i data-feather="clock" style="width: 14px; height: 14px; vertical-align: middle;"></i> Expires</dt>
             <dd>
                 {% if let Some(expires) = expires_display %}
-                {{ expires }}
+                <strong style="color: var(--pico-primary);">{{ expires }}</strong>
                 {% else %}
-                Never
+                <span style="color: var(--pico-muted-color);">Never</span>
                 {% endif %}
             </dd>
+            
             {% if let Some(kind) = content_type %}
-            <dt>Content type</dt>
-            <dd>{{ kind }}</dd>
+            <dt><i data-feather="tag" style="width: 14px; height: 14px; vertical-align: middle;"></i> Content type</dt>
+            <dd><code style="font-size: 0.875rem;">{{ kind }}</code></dd>
             {% endif %}
+            
             {% if let Some(signature) = checksum %}
-            <dt>Checksum</dt>
-            <dd><code>{{ signature }}</code></dd>
+            <dt><i data-feather="check-circle" style="width: 14px; height: 14px; vertical-align: middle;"></i> Checksum</dt>
+            <dd><code style="font-size: 0.75rem; word-break: break-all;">{{ signature }}</code></dd>
             {% endif %}
         </dl>
 
@@ -56,7 +71,7 @@
                 {% if let Some(csrf) = layout.csrf %}
                 <input type="hidden" name="csrf_token" value="{{ csrf.token }}">
                 {% endif %}
-                <button type="submit" class="primary">
+                <button type="submit" class="icon-button">
                     <i data-feather="link"></i>
                     Generate direct link
                 </button>
@@ -64,8 +79,11 @@
         </footer>
     </article>
 
-    <div id="direct-link-output" class="card secondary" role="region" aria-live="polite">
-        <p>Generate a direct link to download this file directly.</p>
+    <div id="direct-link-output" class="card" style="background: color-mix(in srgb, var(--pico-muted-color) 5%, var(--pico-card-background-color));" role="region" aria-live="polite">
+        <p style="text-align: center; color: var(--pico-muted-color); margin: 0;">
+            <i data-feather="info" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 0.5rem;"></i>
+            Generate a direct link to download this file directly.
+        </p>
     </div>
 </section>
 {% endblock %}

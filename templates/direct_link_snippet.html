@@ -1,12 +1,16 @@
-<div id="direct-link-output" class="card" role="region" aria-live="polite">
-    <h3>Temporary direct download link</h3>
-    <p class="secondary">
-        This link expires in {{ ttl_minutes }} minute{% if ttl_minutes != 1 %}s{% endif %}
+<div id="direct-link-output" class="card success" role="region" aria-live="polite">
+    <h3 style="margin-top: 0; display: flex; align-items: center; gap: 0.5rem;">
+        <i data-feather="check-circle" style="width: 24px; height: 24px;"></i>
+        Temporary direct download link
+    </h3>
+    <p style="color: var(--pico-muted-color); margin-bottom: 1.5rem;">
+        <i data-feather="clock" style="width: 16px; height: 16px; vertical-align: middle;"></i>
+        This link expires in <strong>{{ ttl_minutes }} minute{% if ttl_minutes != 1 %}s{% endif %}</strong>
         ({{ expires_display }}).
     </p>
-    <div class="grid">
-        <input id="{{ input_id }}" type="text" value="{{ link }}" readonly>
-        <button type="button" class="secondary" data-copy data-copy-target="#{{ input_id }}">
+    <div style="display: flex; gap: 0.5rem; align-items: flex-start;">
+        <input id="{{ input_id }}" type="text" value="{{ link }}" readonly style="flex: 1; font-family: monospace; font-size: 0.875rem;">
+        <button type="button" class="secondary outline" data-copy data-copy-target="#{{ input_id }}" style="white-space: nowrap;">
             <i data-feather="copy" aria-hidden="true"></i>
             Copy link
         </button>

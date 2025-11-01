@@ -1,29 +1,38 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section aria-labelledby="login-heading">
-    <h1 id="login-heading">Sign in to continue</h1>
-    {% if let Some(message) = error_message %}
-    <article class="contrast" role="alert">
-        <p>{{ message }}</p>
-    </article>
-    {% endif %}
-    <form method="post" action="/login" class="grid">
-        {% if let Some(csrf) = layout.csrf %}
-        <input type="hidden" name="csrf_token" value="{{ csrf.token }}">
-        {% endif %}
-        <label for="login-username">
-            Username
-            <input id="login-username" name="username" type="text" placeholder="you@example.com" autocomplete="username" value="{{ username }}" required>
-        </label>
-        <label for="login-password">
-            Password
-            <input id="login-password" name="password" type="password" autocomplete="current-password" required>
-        </label>
-        <div class="grid">
-            <button type="submit">Sign in</button>
-            <a role="button" class="secondary" href="/">Cancel</a>
+<section aria-labelledby="login-heading" style="max-width: 500px; margin: 2rem auto;">
+    <article>
+        <header>
+            <h1 id="login-heading" style="text-align: left; margin-bottom: 0.5rem;">
+                Sign in
+            </h1>
+        </header>
+        {% if let Some(message) = error_message %}
+        <div class="card error" role="alert">
+            <strong>Error:</strong> {{ message }}
         </div>
-    </form>
+        {% endif %}
+        <form method="post" action="/login">
+            {% if let Some(csrf) = layout.csrf %}
+            <input type="hidden" name="csrf_token" value="{{ csrf.token }}">
+            {% endif %}
+            <label for="login-username">
+                Username
+                <input id="login-username" name="username" type="text" placeholder="you@example.com" autocomplete="username" value="{{ username }}" required>
+            </label>
+            <label for="login-password">
+                Password
+                <input id="login-password" name="password" type="password" autocomplete="current-password" required>
+            </label>
+            <div class="button-group" style="margin-top: 1.5rem;">
+                <button type="submit" class="icon-button" style="flex: 1;">
+                    <i data-feather="log-in"></i>
+                    Sign in
+                </button>
+                <a role="button" class="secondary outline" href="/">Cancel</a>
+            </div>
+        </form>
+    </article>
 </section>
 {% endblock %}

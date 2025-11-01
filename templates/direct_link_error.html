@@ -1,3 +1,6 @@
-<div id="direct-link-output" class="card contrast" role="alert" aria-live="assertive">
-    <p>{{ message }}</p>
+<div id="direct-link-output" class="card error" role="alert" aria-live="assertive">
+    <p style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+        <i data-feather="alert-circle" style="width: 20px; height: 20px; flex-shrink: 0;"></i>
+        <strong>Error:</strong> {{ message }}
+    </p>
 </div>

@@ -1,34 +1,57 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section>
+<section style="max-width: 700px; margin: 0 auto;">
     <hgroup>
-        <h1>Upload a file</h1>
-        <p>Maximum size {{ max_file_size_display }}.</p>
+        <h1>
+            <i data-feather="upload" style="width: 28px; height: 28px; vertical-align: middle; margin-right: 0.5rem;"></i>
+            Upload a file
+        </h1>
+        <p>Maximum size: <strong>{{ max_file_size_display }}</strong></p>
     </hgroup>
+
     {% if let Some(error) = error_message %}
-    <article class="contrast" role="alert">
-        <p>{{ error }}</p>
-    </article>
+    <div class="card error" role="alert">
+        <strong>Error:</strong> {{ error }}
+    </div>
     {% endif %}
-    <form method="post" action="/upload" enctype="multipart/form-data">
-        {% if let Some(csrf) = layout.csrf %}
-        <input type="hidden" name="csrf_token" value="{{ csrf.token }}">
-        {% endif %}
-        <label>
-            File
-            <input type="file" name="file" required aria-required="true" />
-        </label>
-        <label>
-            Expires in (hours)
-            <input type="number" name="expires_in" min="1" max="{{ max_expiration_hours }}" value="{{ expires_in_value }}" required aria-required="true" />
-            <small>Files will be removed automatically after the selected time.</small>
-        </label>
-        <label>
-            Notes (optional)
-            <textarea name="notes" rows="3" placeholder="Internal notes for this upload"></textarea>
-        </label>
-        <button type="submit">Start upload</button>
-    </form>
+
+    <article>
+        <form method="post" action="/upload" enctype="multipart/form-data">
+            {% if let Some(csrf) = layout.csrf %}
+            <input type="hidden" name="csrf_token" value="{{ csrf.token }}">
+            {% endif %}
+            
+            <label>
+                <strong>
+                    <i data-feather="file" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 0.25rem;"></i>
+                    File
+                </strong>
+                <input type="file" name="file" required aria-required="true" />
+            </label>
+
+            <label>
+                <strong>
+                    <i data-feather="clock" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 0.25rem;"></i>
+                    Expires in (hours)
+                </strong>
+                <input type="number" name="expires_in" min="1" max="{{ max_expiration_hours }}" value="{{ expires_in_value }}" required aria-required="true" />
+                <small>Files will be removed automatically after the selected time.</small>
+            </label>
+
+            <label>
+                <strong>
+                    <i data-feather="edit-3" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 0.25rem;"></i>
+                    Notes <span style="font-weight: normal; color: var(--pico-muted-color);">(optional)</span>
+                </strong>
+                <textarea name="notes" rows="3" placeholder="Internal notes for this upload"></textarea>
+            </label>
+
+            <button type="submit" class="icon-button" style="width: 100%; margin-top: 1rem;">
+                <i data-feather="upload-cloud"></i>
+                Start upload
+            </button>
+        </form>
+    </article>
 </section>
 {% endblock %}
