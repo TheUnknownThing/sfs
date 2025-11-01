@@ -48,7 +48,11 @@
         </dl>
 
         <footer>
-            <form method="post" action="/f/{{ code }}/link">
+            <form method="post" action="/f/{{ code }}/link"
+                  hx-post="/f/{{ code }}/link"
+                  hx-target="#direct-link-output"
+                  hx-swap="outerHTML"
+                  hx-disabled-elt="button">
                 {% if let Some(csrf) = layout.csrf %}
                 <input type="hidden" name="csrf_token" value="{{ csrf.token }}">
                 {% endif %}
@@ -59,5 +63,9 @@
             </form>
         </footer>
     </article>
+
+    <div id="direct-link-output" class="card secondary" role="region" aria-live="polite">
+        <p>Generate a direct link to download this file directly.</p>
+    </div>
 </section>
 {% endblock %}

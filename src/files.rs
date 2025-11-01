@@ -127,3 +127,52 @@ pub async fn find_file_by_code(
     .fetch_optional(pool)
     .await
 }
+
+/// Lookup a file by its internal identifier.
+pub async fn find_file_by_id(
+    pool: &SqlitePool,
+    file_id: &str,
+) -> Result<Option<FileLookup>, sqlx::Error> {
+    sqlx::query_as::<_, FileLookup>(
+        r#"
+        SELECT
+            id,
+            owner_user_id,
+            code,
+            original_name,
+            stored_path,
+            size_bytes,
+            content_type,
+            checksum,
+            created_at,
+            expires_at
+        FROM files
+        WHERE id = ?
+        LIMIT 1
+        "#,
+    )
+    .bind(file_id)
+    .fetch_optional(pool)
+    .await
+}
+
+/// Update the last accessed timestamp for a file.
+pub async fn update_last_accessed(
+    pool: &SqlitePool,
+    file_id: &str,
+    accessed_at: i64,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        r#"
+        UPDATE files
+        SET last_accessed_at = ?
+        WHERE id = ?
+        "#,
+    )
+    .bind(accessed_at)
+    .bind(file_id)
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}

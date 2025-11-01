@@ -1,0 +1,14 @@
+<div id="direct-link-output" class="card" role="region" aria-live="polite">
+    <h3>Temporary direct download link</h3>
+    <p class="secondary">
+        This link expires in {{ ttl_minutes }} minute{% if ttl_minutes != 1 %}s{% endif %}
+        ({{ expires_display }}).
+    </p>
+    <div class="grid">
+        <input id="{{ input_id }}" type="text" value="{{ link }}" readonly>
+        <button type="button" class="secondary" data-copy data-copy-target="#{{ input_id }}">
+            <i data-feather="copy" aria-hidden="true"></i>
+            Copy link
+        </button>
+    </div>
+</div>

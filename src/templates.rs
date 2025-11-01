@@ -256,6 +256,49 @@ impl FileTemplate {
     }
 }
 
+#[derive(Template)]
+#[template(path = "direct_link_snippet.html", escape = "html")]
+pub struct DirectLinkSnippetTemplate {
+    pub link: String,
+    pub expires_display: String,
+    pub ttl_minutes: u64,
+    pub input_id: String,
+}
+
+impl DirectLinkSnippetTemplate {
+    pub fn new(
+        link: impl Into<String>,
+        expires_display: impl Into<String>,
+        ttl_minutes: u64,
+    ) -> Self {
+        Self {
+            link: link.into(),
+            expires_display: expires_display.into(),
+            ttl_minutes,
+            input_id: "direct-link-url".to_string(),
+        }
+    }
+
+    pub fn with_input_id(mut self, input_id: impl Into<String>) -> Self {
+        self.input_id = input_id.into();
+        self
+    }
+}
+
+#[derive(Template)]
+#[template(path = "direct_link_error.html", escape = "html")]
+pub struct DirectLinkErrorTemplate {
+    pub message: String,
+}
+
+impl DirectLinkErrorTemplate {
+    pub fn new(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+        }
+    }
+}
+
 #[allow(dead_code)]
 #[derive(Template)]
 #[template(path = "settings.html", escape = "html")]

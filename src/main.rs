@@ -3,6 +3,7 @@ mod auth;
 mod config;
 mod csrf;
 mod database;
+mod direct_links;
 mod files;
 mod logging;
 mod rate_limit;
@@ -15,6 +16,7 @@ use auth::{
     randomized_backoff, touch_user_login, update_password_hash, verify_password, AuthError,
 };
 use axum::{
+    body::Body,
     extract::{
         multipart::{Field, Multipart, MultipartError},
         ConnectInfo, Path as AxumPath, State,
@@ -26,6 +28,7 @@ use axum::{
 };
 use config::AppConfig;
 use database::initialize_database;
+use direct_links::TokenError as DownloadTokenError;
 use logging::init_logging;
 use rate_limit::RateLimitError;
 use serde::Deserialize;
@@ -36,12 +39,13 @@ use std::{
     path::{Path, PathBuf},
 };
 use templates::{
-    FileTemplate, HomeTemplate, HomeUploadRow, HtmlTemplate, LayoutContext, LoginTemplate,
-    UploadTemplate,
+    DirectLinkErrorTemplate, DirectLinkSnippetTemplate, FileTemplate, HomeTemplate, HomeUploadRow,
+    HtmlTemplate, LayoutContext, LoginTemplate, UploadTemplate,
 };
 use thiserror::Error;
 use time::{Duration as TimeDuration, OffsetDateTime};
 use tokio::{fs, io::AsyncWriteExt};
+use tokio_util::io::ReaderStream;
 use tower::ServiceBuilder;
 use tower_http::limit::RequestBodyLimitLayer;
 use tower_http::trace::TraceLayer;
@@ -68,6 +72,8 @@ enum AppError {
     Logging(String),
     #[error("Authentication error: {0}")]
     Auth(#[from] AuthError),
+    #[error("Application state error: {0}")]
+    AppState(#[from] app_state::AppStateError),
 }
 
 const MULTIPART_OVERHEAD_BYTES: u64 = 64_u64 * 1024;
@@ -109,7 +115,7 @@ async fn main() -> Result<(), AppError> {
         .with_name("__Host.sfs.sid");
 
     // Create app state
-    let app_state = AppState::new(db_pool, config.clone());
+    let app_state = AppState::new(db_pool, config.clone())?;
 
     // Configure per-route upload limits with a small multipart overhead allowance
     let upload_body_limit = config
@@ -129,6 +135,7 @@ async fn main() -> Result<(), AppError> {
         .route("/", get(home_handler))
         .route("/f/:code", get(file_lookup_handler))
         .route("/f/:code/link", post(file_direct_link_handler))
+        .route("/d/:token", get(download_handler))
         .route("/login", get(login_form_handler).post(login_submit_handler))
         .route("/logout", post(logout_handler))
         .merge(upload_routes)
@@ -269,6 +276,7 @@ async fn file_lookup_handler(
 
 async fn file_direct_link_handler(
     State(state): State<AppState>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     session: Session,
     AxumPath(raw_code): AxumPath<String>,
     Form(form): Form<GenerateLinkForm>,
@@ -295,21 +303,285 @@ async fn file_direct_link_handler(
 
     let record = match fetch_active_file_by_code(&state, &code).await {
         Ok(record) => record,
-        Err(response) => return response,
+        Err(response) => {
+            let status = response.status();
+            return match status {
+                StatusCode::NOT_FOUND => direct_link_error_response(
+                    StatusCode::NOT_FOUND,
+                    "We couldn't find that file anymore.",
+                ),
+                StatusCode::GONE => {
+                    direct_link_error_response(StatusCode::GONE, "This file has already expired.")
+                }
+                _ => response,
+            };
+        }
     };
 
-    warn!(
+    let client_ip = addr.ip();
+
+    if let Err(err) = state.direct_link_rate_limiter().check_ip(client_ip) {
+        warn!(
+            target: "links",
+            ip = %client_ip,
+            code = %code,
+            file_id = %record.id,
+            %err,
+            "rate limited direct link generation"
+        );
+        return rate_limited_direct_link_response(&err);
+    }
+
+    let ttl_minutes = state.config().defaults.direct_link_ttl_minutes;
+    if ttl_minutes == 0 {
+        error!(target: "links", code = %code, "direct link TTL is misconfigured to zero");
+        return server_error_response();
+    }
+
+    let ttl_minutes_i64 = match i64::try_from(ttl_minutes) {
+        Ok(value) => value,
+        Err(_) => {
+            error!(
+                target: "links",
+                ttl = ttl_minutes,
+                "direct link TTL exceeds supported range"
+            );
+            return server_error_response();
+        }
+    };
+
+    let now = OffsetDateTime::now_utc();
+    let ttl_duration = TimeDuration::minutes(ttl_minutes_i64);
+    let mut expires_at = match now.checked_add(ttl_duration) {
+        Some(ts) => ts,
+        None => {
+            error!(target: "links", code = %code, "failed to compute link expiration");
+            return server_error_response();
+        }
+    };
+
+    if let Some(file_expires_at) = record.expires_at {
+        match OffsetDateTime::from_unix_timestamp(file_expires_at) {
+            Ok(file_expiry) => {
+                if file_expiry <= now {
+                    return direct_link_error_response(
+                        StatusCode::GONE,
+                        "This file has already expired.",
+                    );
+                }
+
+                if file_expiry < expires_at {
+                    expires_at = file_expiry;
+                }
+            }
+            Err(err) => {
+                error!(
+                    target: "links",
+                    %err,
+                    code = %code,
+                    expires_at = file_expires_at,
+                    "invalid expires_at stored for file during link generation"
+                );
+                return server_error_response();
+            }
+        }
+    }
+
+    let token = match state.download_tokens().issue(&record.id, expires_at) {
+        Ok(token) => token,
+        Err(err) => {
+            error!(
+                target: "links",
+                %err,
+                code = %code,
+                file_id = %record.id,
+                "failed to sign direct download token"
+            );
+            return server_error_response();
+        }
+    };
+
+    let effective_seconds = (expires_at - now).whole_seconds();
+    let effective_minutes = ((effective_seconds + 59) / 60).max(1);
+    let ttl_display = match u64::try_from(effective_minutes) {
+        Ok(value) => value,
+        Err(_) => ttl_minutes,
+    };
+
+    let direct_url = format!("/d/{token}");
+    let expires_display = format_datetime_utc(expires_at);
+    let input_id = format!("direct-link-url-{}", Ulid::new());
+
+    info!(
         target: "links",
+        ip = %client_ip,
         code = %code,
         file_id = %record.id,
-        "direct link generation requested before implementation"
+        expires_at = expires_at.unix_timestamp(),
+        ttl_minutes = ttl_display,
+        "issued temporary direct download link"
     );
 
-    (
-        StatusCode::NOT_IMPLEMENTED,
-        "Direct link generation is not available yet.",
-    )
-        .into_response()
+    let template = DirectLinkSnippetTemplate::new(direct_url, expires_display, ttl_display)
+        .with_input_id(input_id);
+
+    HtmlTemplate::new(template).into_response()
+}
+
+async fn download_handler(
+    State(state): State<AppState>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    AxumPath(token): AxumPath<String>,
+) -> Response {
+    let client_ip = addr.ip();
+
+    if let Err(err) = state.direct_download_rate_limiter().check_ip(client_ip) {
+        warn!(
+            target: "links",
+            ip = %client_ip,
+            %err,
+            "rate limited direct download request"
+        );
+        return rate_limited_download_response(&err);
+    }
+
+    let now = OffsetDateTime::now_utc();
+
+    let claims = match state.download_tokens().parse(&token, now) {
+        Ok(claims) => claims,
+        Err(err) => {
+            return match err {
+                DownloadTokenError::Expired
+                | DownloadTokenError::InvalidFormat
+                | DownloadTokenError::InvalidData
+                | DownloadTokenError::InvalidSignature => {
+                    warn!(
+                        target: "links",
+                        ip = %client_ip,
+                        %err,
+                        "invalid direct download token"
+                    );
+                    download_unauthorized_response()
+                }
+                DownloadTokenError::SecretTooShort | DownloadTokenError::SecretDecode(_) => {
+                    error!(
+                        target: "links",
+                        %err,
+                        "download token validation failed due to secret configuration"
+                    );
+                    server_error_response()
+                }
+            };
+        }
+    };
+
+    let record = match files::find_file_by_id(state.db(), &claims.file_id).await {
+        Ok(Some(record)) => record,
+        Ok(None) => {
+            warn!(
+                target: "links",
+                ip = %client_ip,
+                file_id = %claims.file_id,
+                "download requested for missing file"
+            );
+            return file_expired_response();
+        }
+        Err(err) => {
+            error!(
+                target: "files",
+                %err,
+                file_id = %claims.file_id,
+                "database error while loading file for download"
+            );
+            return server_error_response();
+        }
+    };
+
+    if let Some(expires_at) = record.expires_at {
+        if expires_at <= now.unix_timestamp() {
+            debug!(
+                target: "links",
+                file_id = %record.id,
+                expires_at,
+                "download attempted after file expiration"
+            );
+            return file_expired_response();
+        }
+    }
+
+    if record.size_bytes < 0 {
+        error!(
+            target: "links",
+            file_id = %record.id,
+            size = record.size_bytes,
+            "stored file size invalid during download"
+        );
+        return server_error_response();
+    }
+
+    let storage_path = state.config().storage.root.join(&record.stored_path);
+    let file = match fs::File::open(&storage_path).await {
+        Ok(file) => file,
+        Err(err) => {
+            error!(
+                target: "links",
+                %err,
+                path = %storage_path.display(),
+                file_id = %record.id,
+                "failed to open file for direct download"
+            );
+            return file_expired_response();
+        }
+    };
+
+    let guessed_type = record
+        .content_type
+        .as_deref()
+        .and_then(|value| HeaderValue::from_str(value).ok())
+        .unwrap_or_else(|| {
+            let guess = mime_guess::from_path(&record.original_name).first_or_octet_stream();
+            HeaderValue::from_str(guess.essence_str())
+                .unwrap_or_else(|_| HeaderValue::from_static("application/octet-stream"))
+        });
+
+    let download_name = sanitize_filename(Some(&record.original_name));
+    let content_disposition = build_content_disposition_header(&download_name);
+
+    let mut response = Response::new(Body::from_stream(ReaderStream::new(file)));
+    let headers = response.headers_mut();
+    headers.insert(header::CONTENT_TYPE, guessed_type);
+    headers.insert(header::CONTENT_DISPOSITION, content_disposition);
+    headers.insert(
+        header::HeaderName::from_static("x-content-type-options"),
+        HeaderValue::from_static("nosniff"),
+    );
+
+    let size_bytes = record.size_bytes as u64;
+    if let Ok(value) = HeaderValue::from_str(&size_bytes.to_string()) {
+        headers.insert(header::CONTENT_LENGTH, value);
+    }
+
+    info!(
+        target: "links",
+        ip = %client_ip,
+        file_id = %record.id,
+        code = %record.code,
+        token_expires_at = claims.expires_at.unix_timestamp(),
+        "serving direct download"
+    );
+
+    if let Err(err) =
+        files::update_last_accessed(state.db(), &record.id, now.unix_timestamp()).await
+    {
+        warn!(
+            target: "files",
+            %err,
+            file_id = %record.id,
+            "failed to update last accessed timestamp after download"
+        );
+    }
+
+    response
 }
 
 async fn upload_form_handler(State(state): State<AppState>, session: Session) -> Response {
@@ -1218,6 +1490,9 @@ async fn rate_limited_login_response(
             "Too many login attempts for this username. Please wait before trying again."
                 .to_string()
         }
+        RateLimitError::DirectLink(_) | RateLimitError::DirectDownload(_) => {
+            "Too many requests right now. Please wait before trying again.".to_string()
+        }
     };
 
     let mut response = render_login_page(
@@ -1243,6 +1518,71 @@ fn server_error_response() -> Response {
         "Unable to process your request. Please try again later.",
     )
         .into_response()
+}
+
+fn direct_link_error_response(status: StatusCode, message: &str) -> Response {
+    let template = DirectLinkErrorTemplate::new(message);
+    HtmlTemplate::with_status(template, status).into_response()
+}
+
+fn rate_limited_direct_link_response(error: &RateLimitError) -> Response {
+    let retry_after_secs = error.retry_after().as_secs().max(1);
+    let mut response = direct_link_error_response(
+        StatusCode::TOO_MANY_REQUESTS,
+        "You are requesting links too quickly. Please wait and try again.",
+    );
+
+    if let Ok(value) = HeaderValue::from_str(&retry_after_secs.to_string()) {
+        response.headers_mut().insert(header::RETRY_AFTER, value);
+    }
+
+    response
+}
+
+fn rate_limited_download_response(error: &RateLimitError) -> Response {
+    let retry_after_secs = error.retry_after().as_secs().max(1);
+    let mut response = (
+        StatusCode::TOO_MANY_REQUESTS,
+        "Too many downloads from this IP address. Please wait and try again.",
+    )
+        .into_response();
+
+    if let Ok(value) = HeaderValue::from_str(&retry_after_secs.to_string()) {
+        response.headers_mut().insert(header::RETRY_AFTER, value);
+    }
+
+    response
+}
+
+fn download_unauthorized_response() -> Response {
+    (
+        StatusCode::UNAUTHORIZED,
+        "That direct link is no longer valid. Visit the file page to generate a new one.",
+    )
+        .into_response()
+}
+
+fn build_content_disposition_header(filename: &str) -> HeaderValue {
+    let mut safe = String::with_capacity(filename.len());
+
+    for ch in filename.chars() {
+        if matches!(ch, ' '..='~') && ch != '"' && ch != '\\' {
+            safe.push(ch);
+        } else {
+            safe.push('_');
+        }
+    }
+
+    if safe.is_empty() {
+        safe.push_str("download.bin");
+    }
+
+    if safe.len() > 255 {
+        safe.truncate(255);
+    }
+
+    let header_value = format!("attachment; filename=\"{safe}\"");
+    HeaderValue::from_str(&header_value).unwrap_or_else(|_| HeaderValue::from_static("attachment"))
 }
 
 #[derive(Debug, Deserialize)]
