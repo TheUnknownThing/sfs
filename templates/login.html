@@ -3,10 +3,18 @@
 {% block content %}
 <section aria-labelledby="login-heading">
     <h1 id="login-heading">Sign in to continue</h1>
+    {% if let Some(message) = error_message %}
+    <article class="contrast" role="alert">
+        <p>{{ message }}</p>
+    </article>
+    {% endif %}
     <form method="post" action="/login" class="grid">
-        <label for="login-email">
-            Email address
-            <input id="login-email" name="email" type="email" placeholder="you@example.com" autocomplete="email" required>
+        {% if let Some(csrf) = layout.csrf %}
+        <input type="hidden" name="csrf_token" value="{{ csrf.token }}">
+        {% endif %}
+        <label for="login-username">
+            Username
+            <input id="login-username" name="username" type="text" placeholder="you@example.com" autocomplete="username" value="{{ username }}" required>
         </label>
         <label for="login-password">
             Password

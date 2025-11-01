@@ -1,4 +1,4 @@
-use crate::config::AppConfig;
+use crate::{config::AppConfig, rate_limit::LoginRateLimiter};
 use sqlx::SqlitePool;
 use std::sync::Arc;
 
@@ -9,6 +9,8 @@ pub struct AppState {
     pub db: SqlitePool,
     /// Application configuration
     pub config: Arc<AppConfig>,
+    /// Shared login rate limiter
+    pub login_rate_limiter: Arc<LoginRateLimiter>,
 }
 
 impl AppState {
@@ -17,6 +19,7 @@ impl AppState {
         Self {
             db,
             config: Arc::new(config),
+            login_rate_limiter: Arc::new(LoginRateLimiter::new()),
         }
     }
 
@@ -28,5 +31,10 @@ impl AppState {
     /// Get a reference to the application configuration
     pub fn config(&self) -> &AppConfig {
         &self.config
+    }
+
+    /// Access the login rate limiter instance
+    pub fn login_rate_limiter(&self) -> &LoginRateLimiter {
+        &self.login_rate_limiter
     }
 }

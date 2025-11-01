@@ -6,14 +6,24 @@
         <h1>{{ layout.brand_name }}</h1>
         <p>Secure file sharing, streamlined for teams.</p>
     </hgroup>
+    {% if layout.current_user.is_some() %}
     <p>
         <a role="button" href="/upload">Upload a file</a>
+        <a role="button" class="secondary" href="/settings">Settings</a>
+    </p>
+    {% else %}
+    <p>
         <a role="button" class="secondary" href="/login">Log in</a>
     </p>
+    {% endif %}
 </section>
 <section>
     <h2>Start in seconds</h2>
+    {% if layout.current_user.is_some() %}
+    <p>Manage uploads, configure access policies, and monitor usage with confidence.</p>
+    {% else %}
     <p>Sign in to manage uploads, configure access policies, and monitor usage with confidence.</p>
+    {% endif %}
     <ul>
         <li>Encrypted storage with expiring links</li>
         <li>Granular access controls</li>

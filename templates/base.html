@@ -17,12 +17,26 @@
     <nav>
         <ul>
             <li><strong><a href="/">{{ layout.brand_name }}</a></strong></li>
+            {% if let Some(user) = layout.current_user %}
+            <li aria-label="Signed in user">Signed in as {{ user.username }}</li>
+            {% endif %}
         </ul>
         <ul>
             <li><a href="/">Home</a></li>
+            {% if layout.current_user.is_some() %}
             <li><a href="/upload">Upload</a></li>
             <li><a href="/settings">Settings</a></li>
+            <li>
+                <form method="post" action="/logout" class="inline">
+                    {% if let Some(csrf) = layout.csrf %}
+                    <input type="hidden" name="csrf_token" value="{{ csrf.token }}">
+                    {% endif %}
+                    <button type="submit" class="secondary">Log out</button>
+                </form>
+            </li>
+            {% else %}
             <li><a href="/login">Login</a></li>
+            {% endif %}
         </ul>
     </nav>
 </header>

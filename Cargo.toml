@@ -25,6 +25,9 @@ askama_axum = "0.4"
 
 # Authentication
 argon2 = "0.5"
+subtle = "2.5"
+fastrand = "2.0"
+governor = { version = "0.6", features = ["dashmap"] }
 
 # IDs and codes
 ulid = "1.1"

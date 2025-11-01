@@ -2,3 +2,5 @@ target/
 data/
 .env
 *.db
+test.db-shm
+test.db-wal

@@ -4,7 +4,12 @@ use axum::response::{Html, IntoResponse, Response};
 use time::OffsetDateTime;
 use tracing::error;
 
-use crate::app_state::AppState;
+use crate::{
+    app_state::AppState,
+    csrf,
+    sessions::{self, SessionUser},
+};
+use tower_sessions::{session::Error as SessionError, Session};
 
 /// Shared layout context injected into all templates
 #[derive(Clone, Debug)]
@@ -13,12 +18,23 @@ pub struct LayoutContext {
     pub brand_name: String,
     pub csrf: Option<CsrfMeta>,
     pub current_year: i32,
+    pub current_user: Option<CurrentUserMeta>,
 }
 
 /// CSRF metadata exposed to templates
 #[derive(Clone, Debug)]
 pub struct CsrfMeta {
     pub token: String,
+}
+
+/// Lightweight view of the authenticated user for the layout.
+#[derive(Clone, Debug)]
+pub struct CurrentUserMeta {
+    #[allow(dead_code)]
+    pub id: i64,
+    pub username: String,
+    #[allow(dead_code)]
+    pub is_admin: bool,
 }
 
 impl LayoutContext {
@@ -29,6 +45,7 @@ impl LayoutContext {
             brand_name: state.config().ui.brand_name.clone(),
             csrf: None,
             current_year: OffsetDateTime::now_utc().year(),
+            current_user: None,
         }
     }
 
@@ -36,6 +53,30 @@ impl LayoutContext {
     pub fn with_csrf_token(mut self, token: Option<String>) -> Self {
         self.csrf = token.map(|token| CsrfMeta { token });
         self
+    }
+
+    /// Attach the current authenticated user information.
+    pub fn with_current_user(mut self, user: Option<SessionUser>) -> Self {
+        self.current_user = user.map(|user| CurrentUserMeta {
+            id: user.id,
+            username: user.username,
+            is_admin: user.is_admin,
+        });
+        self
+    }
+
+    /// Construct a layout context using session-derived metadata.
+    pub async fn from_session(
+        state: &AppState,
+        session: &Session,
+        title: impl Into<String>,
+    ) -> Result<Self, SessionError> {
+        let csrf_token = csrf::ensure_csrf_token(session).await?;
+        let user = sessions::current_user(session).await?;
+
+        Ok(Self::from_state(state, title)
+            .with_csrf_token(Some(csrf_token))
+            .with_current_user(user))
     }
 }
 
@@ -97,11 +138,27 @@ impl HomeTemplate {
 #[template(path = "login.html", escape = "html")]
 pub struct LoginTemplate {
     pub layout: LayoutContext,
+    pub error_message: Option<String>,
+    pub username: String,
 }
 
 impl LoginTemplate {
     pub fn new(layout: LayoutContext) -> Self {
-        Self { layout }
+        Self {
+            layout,
+            error_message: None,
+            username: String::new(),
+        }
+    }
+
+    pub fn with_error_message(mut self, message: impl Into<String>) -> Self {
+        self.error_message = Some(message.into());
+        self
+    }
+
+    pub fn with_username(mut self, username: impl Into<String>) -> Self {
+        self.username = username.into();
+        self
     }
 }
 
