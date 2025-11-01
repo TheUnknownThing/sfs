@@ -21,7 +21,7 @@
         <div class="card" style="background: color-mix(in srgb, var(--pico-primary) 10%, var(--pico-card-background-color)); border-color: var(--pico-primary);">
             <label for="lookup-code" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--pico-primary);">
                 <i data-feather="hash" style="width: 16px; height: 16px; vertical-align: middle;"></i>
-                Lookup Code
+                Share Code
             </label>
             <div style="display: flex; gap: 0.5rem; align-items: center;">
                 <input id="lookup-code" type="text" value="{{ code }}" readonly style="flex: 1; font-family: monospace; font-size: 1.1rem; font-weight: bold;">
@@ -63,19 +63,30 @@
         </dl>
 
         <footer>
-            <form method="post" action="/f/{{ code }}/link"
-                  hx-post="/f/{{ code }}/link"
-                  hx-target="#direct-link-output"
-                  hx-swap="outerHTML"
-                  hx-disabled-elt="button">
-                {% if let Some(csrf) = layout.csrf %}
-                <input type="hidden" name="csrf_token" value="{{ csrf.token }}">
-                {% endif %}
-                <button type="submit" class="icon-button">
-                    <i data-feather="link"></i>
-                    Generate direct link
+            <div class="button-group">
+                <button 
+                    type="button" 
+                    class="icon-button"
+                    style="flex: 1;"
+                    onclick="handleDownload(event, '{{ code }}')">
+                    <i data-feather="download"></i>
+                    Download file
                 </button>
-            </form>
+                <form method="post" action="/f/{{ code }}/link"
+                      hx-post="/f/{{ code }}/link"
+                      hx-target="#direct-link-output"
+                      hx-swap="outerHTML"
+                      hx-disabled-elt="button"
+                      style="flex: 1;">
+                    {% if let Some(csrf) = layout.csrf %}
+                    <input type="hidden" name="csrf_token" value="{{ csrf.token }}">
+                    {% endif %}
+                    <button type="submit" class="icon-button secondary outline" style="width: 100%;">
+                        <i data-feather="link"></i>
+                        Generate link
+                    </button>
+                </form>
+            </div>
         </footer>
     </article>
 
@@ -86,4 +97,98 @@
         </p>
     </div>
 </section>
+{% endblock %}
+
+{% block body_scripts %}
+<script>
+    async function handleDownload(event, code) {
+        "use strict";
+
+        const button = event.currentTarget;
+        const originalContent = button.innerHTML;
+        const directLinkContainer = document.getElementById("direct-link-output");
+
+        const activateIcons = () => {
+            if (typeof activateFeatherIcons === "function") {
+                activateFeatherIcons();
+            } else if (window.feather) {
+                window.feather.replace();
+            }
+        };
+
+        try {
+            button.disabled = true;
+            button.innerHTML = '<i data-feather="loader"></i> Generating...';
+            activateIcons();
+
+            const siblingForm = button.closest(".button-group")?.querySelector("form");
+            const csrfTokenField = siblingForm?.querySelector('input[name="csrf_token"]');
+            const metaToken = document.querySelector('meta[name="csrf-token"]');
+            const csrfToken = csrfTokenField?.value || metaToken?.getAttribute("content") || "";
+
+            if (!csrfToken) {
+                throw new Error("Missing CSRF token");
+            }
+
+            const payload = new URLSearchParams();
+            payload.set("csrf_token", csrfToken);
+
+            const response = await fetch(`/f/${code}/link`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
+                },
+                body: payload.toString()
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to generate download link (status ${response.status})`);
+            }
+
+            const html = (await response.text()).trim();
+            if (!html) {
+                throw new Error("Empty response while generating link");
+            }
+
+            const template = document.createElement("template");
+            template.innerHTML = html;
+            const snippet = template.content.firstElementChild;
+
+            if (!snippet) {
+                throw new Error("Failed to parse download snippet");
+            }
+
+            if (directLinkContainer) {
+                directLinkContainer.replaceWith(snippet);
+            }
+
+            activateIcons();
+
+            const linkInput = snippet.querySelector('input[type="text"]');
+            if (!linkInput || !linkInput.value) {
+                throw new Error("Download link missing in response");
+            }
+
+            button.innerHTML = '<i data-feather="check"></i> Downloading...';
+            activateIcons();
+            window.location.href = linkInput.value;
+
+            setTimeout(() => {
+                button.disabled = false;
+                button.innerHTML = originalContent;
+                activateIcons();
+            }, 2000);
+        } catch (error) {
+            console.error("Download error:", error);
+            button.innerHTML = '<i data-feather="alert-circle"></i> Error';
+            activateIcons();
+
+            setTimeout(() => {
+                button.disabled = false;
+                button.innerHTML = originalContent;
+                activateIcons();
+            }, 2500);
+        }
+    }
+</script>
 {% endblock %}

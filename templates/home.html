@@ -12,13 +12,62 @@
             <i data-feather="upload"></i>
             Upload a file
         </a>
-        <a role="button" class="secondary outline" href="/settings">Settings</a>
         {% else %}
         <a role="button" href="/login" class="icon-button">
             <i data-feather="log-in"></i>
             Log in
         </a>
         {% endif %}
+    </div>
+</section>
+
+<section>
+    <div class="lookup-box">
+        <article style="text-align: center;">
+            <h2 style="margin-bottom: 1rem;">
+                <i data-feather="search" style="width: 24px; height: 24px; vertical-align: middle; margin-right: 0.5rem;"></i>
+                Lookup File
+            </h2>
+            <p style="color: var(--pico-muted-color); margin-bottom: 1.5rem;">Enter a share code (e.g. <code>ABCD-EF12</code>)</p>
+            <form id="code-lookup-form" action="/f/" method="get" novalidate>
+                <noscript>
+                    <p style="color: var(--pico-del-color);">Enable JavaScript to use the quick lookup, or navigate to <code>/f/ABCD-EF12</code> manually.</p>
+                </noscript>
+                <div class="code-input-grid" role="group" aria-label="File code">
+                    <div class="code-input-wrapper" data-index="0" data-filled="false">
+                        <input class="code-input" type="text" inputmode="text" autocomplete="one-time-code" autocapitalize="characters" maxlength="1" aria-label="Code character 1" />
+                    </div>
+                    <div class="code-input-wrapper" data-index="1" data-filled="false">
+                        <input class="code-input" type="text" inputmode="text" autocapitalize="characters" maxlength="1" aria-label="Code character 2" />
+                    </div>
+                    <div class="code-input-wrapper" data-index="2" data-filled="false">
+                        <input class="code-input" type="text" inputmode="text" autocapitalize="characters" maxlength="1" aria-label="Code character 3" />
+                    </div>
+                    <div class="code-input-wrapper" data-index="3" data-filled="false">
+                        <input class="code-input" type="text" inputmode="text" autocapitalize="characters" maxlength="1" aria-label="Code character 4" />
+                    </div>
+                    <span class="code-input-separator" aria-hidden="true">-</span>
+                    <div class="code-input-wrapper" data-index="4" data-filled="false">
+                        <input class="code-input" type="text" inputmode="text" autocapitalize="characters" maxlength="1" aria-label="Code character 5" />
+                    </div>
+                    <div class="code-input-wrapper" data-index="5" data-filled="false">
+                        <input class="code-input" type="text" inputmode="text" autocapitalize="characters" maxlength="1" aria-label="Code character 6" />
+                    </div>
+                    <div class="code-input-wrapper" data-index="6" data-filled="false">
+                        <input class="code-input" type="text" inputmode="text" autocapitalize="characters" maxlength="1" aria-label="Code character 7" />
+                    </div>
+                    <div class="code-input-wrapper" data-index="7" data-filled="false">
+                        <input class="code-input" type="text" inputmode="text" autocapitalize="characters" maxlength="1" aria-label="Code character 8" />
+                    </div>
+                </div>
+                <input type="hidden" name="code" id="code-lookup-hidden" pattern="^[A-Za-z0-9]{4}-[A-Za-z0-9]{4}$" required>
+                <button type="submit" class="icon-button" style="width: 100%;">
+                    <i data-feather="arrow-right"></i>
+                    View File
+                </button>
+                <small style="color: var(--pico-muted-color);">Paste the entire code or type one character per box.</small>
+            </form>
+        </article>
     </div>
 </section>
 
@@ -64,4 +113,148 @@
     {% endif %}
 </section>
 {% endif %}
+{% endblock %}
+
+{% block body_scripts %}
+<script>
+    (() => {
+        "use strict";
+
+        const form = document.getElementById("code-lookup-form");
+        if (!form) {
+            return;
+        }
+
+        const inputs = Array.from(form.querySelectorAll(".code-input"));
+        const hiddenField = document.getElementById("code-lookup-hidden");
+        const hyphenIndex = 4;
+
+        const sanitize = (value) => value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+
+        const updateHiddenValue = () => {
+            const raw = inputs.map((input) => input.value).join("");
+            if (raw.length === inputs.length) {
+                hiddenField.value = `${raw.slice(0, hyphenIndex)}-${raw.slice(hyphenIndex)}`;
+            } else {
+                hiddenField.value = "";
+            }
+        };
+
+        const focusInput = (index) => {
+            const target = inputs[index];
+            if (target) {
+                target.focus();
+                target.select();
+            }
+        };
+
+        const markWrapperState = (input) => {
+            if (input && input.parentElement?.classList) {
+                input.parentElement.dataset.filled = input.value ? "true" : "false";
+            }
+        };
+
+        const fillFrom = (startIndex, characters) => {
+            let index = startIndex;
+            characters.forEach((char) => {
+                if (index >= inputs.length) {
+                    return;
+                }
+                const sanitizedChar = sanitize(char).slice(0, 1);
+                if (!sanitizedChar) {
+                    return;
+                }
+                inputs[index].value = sanitizedChar;
+                inputs[index].setCustomValidity("");
+                markWrapperState(inputs[index]);
+                index += 1;
+            });
+            updateHiddenValue();
+            if (index < inputs.length) {
+                focusInput(index);
+            } else {
+                focusInput(inputs.length - 1);
+            }
+        };
+
+        inputs.forEach((input) => markWrapperState(input));
+
+        inputs.forEach((input, index) => {
+            input.addEventListener("focus", () => input.select());
+
+            input.addEventListener("input", (event) => {
+                const value = sanitize(event.target.value);
+
+                if (value.length > 1) {
+                    fillFrom(index, value.split(""));
+                    return;
+                }
+
+                event.target.value = value;
+                event.target.setCustomValidity("");
+                markWrapperState(event.target);
+
+                if (value && index < inputs.length - 1) {
+                    focusInput(index + 1);
+                }
+
+                updateHiddenValue();
+            });
+
+            input.addEventListener("keydown", (event) => {
+                if (event.key === "Backspace" && !input.value && index > 0) {
+                    event.preventDefault();
+                    focusInput(index - 1);
+                    return;
+                }
+
+                if (event.key === "ArrowLeft" && index > 0 && input.selectionStart === 0) {
+                    event.preventDefault();
+                    focusInput(index - 1);
+                    return;
+                }
+
+                if (event.key === "ArrowRight" && index < inputs.length - 1 && input.selectionStart === input.value.length) {
+                    event.preventDefault();
+                    focusInput(index + 1);
+                }
+            });
+
+            input.addEventListener("paste", (event) => {
+                const clipboardData = event.clipboardData || window.clipboardData;
+                if (!clipboardData) {
+                    return;
+                }
+                event.preventDefault();
+                const text = sanitize(clipboardData.getData("text"));
+                if (!text) {
+                    return;
+                }
+                fillFrom(index, text.split(""));
+            });
+        });
+
+        form.addEventListener("submit", (event) => {
+            updateHiddenValue();
+
+            if (!hiddenField.value) {
+                event.preventDefault();
+                const firstEmpty = inputs.find((input) => !input.value);
+                if (firstEmpty) {
+                    firstEmpty.setCustomValidity("Enter the remaining characters.");
+                    firstEmpty.reportValidity();
+                    focusInput(inputs.indexOf(firstEmpty));
+                }
+                return;
+            }
+
+            inputs.forEach((input) => input.setCustomValidity(""));
+            event.preventDefault();
+            const targetCode = hiddenField.value;
+            window.location.href = `/f/${encodeURIComponent(targetCode)}`;
+        });
+
+                updateHiddenValue();
+    })();
+</script>
 {% endblock %}
