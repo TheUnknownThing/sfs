@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section>
+    <hgroup>
+        <h1>{{ layout.brand_name }}</h1>
+        <p>Secure file sharing, streamlined for teams.</p>
+    </hgroup>
+    <p>
+        <a role="button" href="/upload">Upload a file</a>
+        <a role="button" class="secondary" href="/login">Log in</a>
+    </p>
+</section>
+<section>
+    <h2>Start in seconds</h2>
+    <p>Sign in to manage uploads, configure access policies, and monitor usage with confidence.</p>
+    <ul>
+        <li>Encrypted storage with expiring links</li>
+        <li>Granular access controls</li>
+        <li>Audit-ready activity logs</li>
+    </ul>
+</section>
+{% endblock %}

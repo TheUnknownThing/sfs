@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section aria-labelledby="login-heading">
+    <h1 id="login-heading">Sign in to continue</h1>
+    <form method="post" action="/login" class="grid">
+        <label for="login-email">
+            Email address
+            <input id="login-email" name="email" type="email" placeholder="you@example.com" autocomplete="email" required>
+        </label>
+        <label for="login-password">
+            Password
+            <input id="login-password" name="password" type="password" autocomplete="current-password" required>
+        </label>
+        <div class="grid">
+            <button type="submit">Sign in</button>
+            <a role="button" class="secondary" href="/">Cancel</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

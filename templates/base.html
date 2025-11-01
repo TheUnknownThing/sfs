@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{{ layout.title }} - {{ layout.brand_name }}{% endblock %}</title>
+    <link rel="stylesheet" href="https://unpkg.com/@picocss/pico@latest/css/pico.min.css" integrity="sha384-HWAjeX8Z/rcMhXwiGInx42Ja9rFqV/gBf0M5IgGlZ0Ja79cJQX/jFwvW0zW4I7hV" crossorigin="anonymous">
+    <script src="https://unpkg.com/htmx.org@1.9.12" integrity="sha384-KWsc5GPN46Uy6OC+X7W43V8CyLiyq1pzCOpFRTkUPg5v9nDVUt9vSV2nV3TqaePX" crossorigin="anonymous" defer></script>
+    <script src="https://unpkg.com/feather-icons@4.29.0/dist/feather.min.js" integrity="sha384-9zadegOgmK0+FtHtG19XXY1KeLa/OL5rzQgWxYzX7ia+6/e1kq8J+V3umIA9AtIm" crossorigin="anonymous" defer></script>
+    {% if let Some(csrf) = layout.csrf %}
+    <meta name="csrf-token" content="{{ csrf.token }}">
+    {% endif %}
+    {% block head %}{% endblock %}
+</head>
+<body>
+<header class="container">
+    <nav>
+        <ul>
+            <li><strong><a href="/">{{ layout.brand_name }}</a></strong></li>
+        </ul>
+        <ul>
+            <li><a href="/">Home</a></li>
+            <li><a href="/upload">Upload</a></li>
+            <li><a href="/settings">Settings</a></li>
+            <li><a href="/login">Login</a></li>
+        </ul>
+    </nav>
+</header>
+<main class="container">
+    {% block content %}{% endblock %}
+</main>
+<footer class="container">
+    <small>&copy; {{ layout.current_year }} {{ layout.brand_name }}. All rights reserved.</small>
+</footer>
+<script>
+    "use strict";
+
+    const activateFeatherIcons = () => {
+        if (window.feather) {
+            window.feather.replace({"aria-hidden": "true"});
+        }
+    };
+
+    document.addEventListener("DOMContentLoaded", activateFeatherIcons);
+    document.body.addEventListener("htmx:afterSwap", activateFeatherIcons);
+
+    document.body.addEventListener("htmx:configRequest", (event) => {
+        const tokenElement = document.querySelector('meta[name="csrf-token"]');
+        if (!tokenElement) {
+            return;
+        }
+
+        const token = tokenElement.getAttribute("content");
+        if (!token) {
+            return;
+        }
+
+        event.detail.headers["X-CSRF-Token"] = token;
+    });
+
+    document.addEventListener("click", (event) => {
+        const trigger = event.target.closest("[data-copy]");
+        if (!trigger) {
+            return;
+        }
+
+        const explicitValue = trigger.getAttribute("data-copy-text");
+        const targetSelector = trigger.getAttribute("data-copy-target");
+        let copyValue = explicitValue;
+
+        if (!copyValue && targetSelector) {
+            const target = document.querySelector(targetSelector);
+            if (target) {
+                if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
+                    copyValue = target.value;
+                } else {
+                    copyValue = target.textContent;
+                }
+            }
+        }
+
+        if (!copyValue) {
+            return;
+        }
+
+        navigator.clipboard.writeText(copyValue.trim()).then(() => {
+            trigger.dataset.copyState = "copied";
+            setTimeout(() => {
+                if (trigger.dataset.copyState === "copied") {
+                    delete trigger.dataset.copyState;
+                }
+            }, 2000);
+        }).catch((error) => {
+            console.error("Failed to copy to clipboard", error);
+        });
+    });
+</script>
+{% block body_scripts %}{% endblock %}
+</body>
+</html>
