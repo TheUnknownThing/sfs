@@ -23,7 +23,7 @@ use axum::{
     body::Body,
     extract::{
         multipart::{Field, Multipart, MultipartError},
-        ConnectInfo, Path as AxumPath, State,
+        ConnectInfo, Path as AxumPath, Query, State,
     },
     http::{header, HeaderValue, StatusCode},
     response::{IntoResponse, Redirect, Response},
@@ -40,6 +40,7 @@ use sessions::{clear_user, current_user, store_user, SessionUser};
 use settings::{AppSettings, SettingsUpdate};
 use sha2::{Digest, Sha256};
 use std::{
+    io::ErrorKind,
     net::SocketAddr,
     path::{Path, PathBuf},
     sync::Arc,
@@ -47,9 +48,9 @@ use std::{
 use templates::{
     AddUserFieldErrors, AddUserFormValues, DirectLinkErrorTemplate, DirectLinkSnippetTemplate,
     FileTemplate, HomeTemplate, HomeUploadRow, HtmlTemplate, LayoutContext, LoginTemplate,
-    ManagedUserRow, RegisterTemplate, RegistrationFieldErrors, RegistrationFormValues,
-    SettingsFieldErrors, SettingsFormValues, SettingsTemplate, UploadTemplate,
-    UserManagementTemplate,
+    ManagedUserRow, PasteFieldErrors, PasteFormValues, PasteLanguageOption, PasteTemplate,
+    RegisterTemplate, RegistrationFieldErrors, RegistrationFormValues, SettingsFieldErrors,
+    SettingsFormValues, SettingsTemplate, UploadTemplate, UserManagementTemplate, PASTE_LANGUAGES,
 };
 use thiserror::Error;
 use time::{Duration as TimeDuration, OffsetDateTime};
@@ -95,6 +96,7 @@ const MAX_DIRECT_LINK_TTL_MINUTES: u64 = 1440;
 const DEFAULT_RECENT_UPLOADS_LIMIT: i64 = 10;
 const CODE_SEGMENT_LENGTH: usize = 4;
 const CODE_TOTAL_LENGTH: usize = CODE_SEGMENT_LENGTH * 2;
+const MAX_PASTE_SIZE_BYTES: u64 = 512 * 1024;
 const CODE_ALPHABET: [char; 31] = [
     '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K', 'M',
     'N', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
@@ -151,6 +153,7 @@ async fn main() -> Result<(), AppError> {
         .route("/", get(home_handler))
         .route("/f/:code", get(file_lookup_handler))
         .route("/f/:code/link", post(file_direct_link_handler))
+        .route("/f/:code/delete", post(file_delete_handler))
         .route("/d/:token", get(download_handler))
         .route("/login", get(login_form_handler).post(login_submit_handler))
         .route(
@@ -171,6 +174,7 @@ async fn main() -> Result<(), AppError> {
             post(user_reset_password_handler),
         )
         .route("/admin/users/:id/delete", post(user_delete_handler))
+        .route("/paste", get(paste_form_handler).post(paste_submit_handler))
         .merge(upload_routes)
         .layer(
             ServiceBuilder::new()
@@ -193,7 +197,16 @@ async fn main() -> Result<(), AppError> {
     Ok(())
 }
 
-async fn home_handler(State(state): State<AppState>, session: Session) -> impl IntoResponse {
+async fn home_handler(
+    State(state): State<AppState>,
+    session: Session,
+    Query(query): Query<HomeQueryParams>,
+) -> impl IntoResponse {
+    let flash_message = match query.flash.as_deref() {
+        Some("deleted") => Some("File deleted successfully.".to_string()),
+        _ => None,
+    };
+
     let session_user = match current_user(&session).await {
         Ok(user) => user,
         Err(err) => {
@@ -222,6 +235,8 @@ async fn home_handler(State(state): State<AppState>, session: Session) -> impl I
         }
     }
 
+    template = template.with_flash_message(flash_message);
+
     HtmlTemplate::new(template)
 }
 
@@ -239,6 +254,7 @@ async fn file_lookup_handler(
         Err(response) => return response,
     };
 
+    let owner_user_id = record.owner_user_id;
     let files::FileLookup {
         original_name,
         size_bytes,
@@ -292,6 +308,11 @@ async fn file_lookup_handler(
 
     let size_display = human_readable_size(size_bytes as u64);
     let layout = layout_from_session(&state, &session, "File details").await;
+    let can_delete = match layout.current_user.as_ref() {
+        Some(user) if user.is_admin => true,
+        Some(user) => owner_user_id.map_or(false, |owner| owner == user.id),
+        None => false,
+    };
 
     let template = FileTemplate::new(
         layout,
@@ -302,7 +323,8 @@ async fn file_lookup_handler(
         expires_display,
     )
     .with_content_type(content_type)
-    .with_checksum(checksum);
+    .with_checksum(checksum)
+    .with_delete_permission(can_delete);
 
     HtmlTemplate::new(template).into_response()
 }
@@ -464,6 +486,173 @@ async fn file_direct_link_handler(
         .with_input_id(input_id);
 
     HtmlTemplate::new(template).into_response()
+}
+
+async fn file_delete_handler(
+    State(state): State<AppState>,
+    session: Session,
+    AxumPath(raw_code): AxumPath<String>,
+    Form(form): Form<DeleteFileForm>,
+) -> Response {
+    let csrf_valid = match csrf::validate_csrf_token(&session, &form.csrf_token).await {
+        Ok(valid) => valid,
+        Err(err) => {
+            error!(target: "csrf", %err, "failed to validate CSRF token for file deletion");
+            return server_error_response();
+        }
+    };
+
+    if !csrf_valid {
+        warn!(target: "csrf", "invalid CSRF token on file delete request");
+        if let Err(err) = csrf::rotate_csrf_token(&session).await {
+            error!(target: "csrf", %err, "failed to rotate CSRF token after delete validation failure");
+        }
+        return (StatusCode::FORBIDDEN, "Invalid CSRF token").into_response();
+    }
+
+    let session_user = match current_user(&session).await {
+        Ok(Some(user)) => user,
+        Ok(None) => return Redirect::to("/login").into_response(),
+        Err(err) => {
+            error!(target: "sessions", %err, "failed to read session during file delete");
+            return server_error_response();
+        }
+    };
+
+    let Some(code) = normalize_lookup_code(&raw_code) else {
+        return file_not_found_response();
+    };
+
+    let record = match files::find_file_by_code(state.db(), &code).await {
+        Ok(Some(record)) => record,
+        Ok(None) => return file_not_found_response(),
+        Err(err) => {
+            error!(target: "files", %err, code = %code, "failed to load file for deletion");
+            return server_error_response();
+        }
+    };
+
+    let allowed = if session_user.is_admin {
+        true
+    } else {
+        record
+            .owner_user_id
+            .map_or(false, |owner| owner == session_user.id)
+    };
+
+    if !allowed {
+        warn!(
+            target: "files",
+            user_id = session_user.id,
+            username = %session_user.username,
+            code = %code,
+            "user attempted to delete file they do not own"
+        );
+        return (
+            StatusCode::FORBIDDEN,
+            "You are not allowed to delete this file.",
+        )
+            .into_response();
+    }
+
+    let stored_path = record.stored_path.clone();
+    let file_id = record.id.clone();
+    let mut conn = match state.db().acquire().await {
+        Ok(conn) => conn,
+        Err(err) => {
+            error!(target: "files", %err, code = %code, "failed to acquire connection for delete");
+            return server_error_response();
+        }
+    };
+
+    if let Err(err) = sqlx::query("BEGIN IMMEDIATE").execute(conn.as_mut()).await {
+        error!(target: "files", %err, code = %code, "failed to begin delete transaction");
+        return server_error_response();
+    }
+
+    let rows_deleted = match sqlx::query("DELETE FROM files WHERE id = ?")
+        .bind(&file_id)
+        .execute(conn.as_mut())
+        .await
+    {
+        Ok(result) => result.rows_affected(),
+        Err(err) => {
+            error!(
+                target: "files",
+                %err,
+                code = %code,
+                file_id = %file_id,
+                "failed to delete file record"
+            );
+            if let Err(rollback_err) = sqlx::query("ROLLBACK").execute(conn.as_mut()).await {
+                error!(target: "files", %rollback_err, "failed to rollback file delete transaction");
+            }
+            return server_error_response();
+        }
+    };
+
+    if rows_deleted == 0 {
+        if let Err(rollback_err) = sqlx::query("ROLLBACK").execute(conn.as_mut()).await {
+            error!(target: "files", %rollback_err, "failed to rollback file delete after missing record");
+        }
+        return file_not_found_response();
+    }
+
+    if let Err(err) = sqlx::query("COMMIT").execute(conn.as_mut()).await {
+        error!(
+            target: "files",
+            %err,
+            code = %code,
+            file_id = %file_id,
+            "failed to commit file delete transaction"
+        );
+        if let Err(rollback_err) = sqlx::query("ROLLBACK").execute(conn.as_mut()).await {
+            error!(target: "files", %rollback_err, "failed to rollback after commit error");
+        }
+        return server_error_response();
+    }
+
+    let storage_path = state.config().storage.root.join(&stored_path);
+    let mut missing_on_disk = false;
+    match fs::remove_file(&storage_path).await {
+        Ok(_) => {}
+        Err(err) if err.kind() == ErrorKind::NotFound => {
+            missing_on_disk = true;
+            debug!(
+                target: "files",
+                code = %code,
+                file_id = %file_id,
+                path = %storage_path.display(),
+                "file already missing on disk during delete"
+            );
+        }
+        Err(err) => {
+            warn!(
+                target: "files",
+                %err,
+                code = %code,
+                file_id = %file_id,
+                path = %storage_path.display(),
+                "file blob removal failed after manual delete"
+            );
+        }
+    }
+
+    if let Err(err) = csrf::rotate_csrf_token(&session).await {
+        error!(target: "csrf", %err, "failed to rotate CSRF token after file delete");
+    }
+
+    info!(
+        target: "files",
+        user_id = session_user.id,
+        username = %session_user.username,
+        code = %code,
+        file_id = %file_id,
+        missing_on_disk,
+        "file removed by user"
+    );
+
+    Redirect::to("/?flash=deleted").into_response()
 }
 
 async fn download_handler(
@@ -1741,6 +1930,297 @@ async fn upload_submit_handler(
     Redirect::to(&format!("/f/{}", code)).into_response()
 }
 
+async fn paste_form_handler(State(state): State<AppState>, session: Session) -> Response {
+    match current_user(&session).await {
+        Ok(Some(_)) => {}
+        Ok(None) => return Redirect::to("/login").into_response(),
+        Err(err) => {
+            error!(target: "sessions", %err, "failed to read session while rendering paste form");
+            return server_error_response();
+        }
+    }
+
+    let settings = match current_app_settings(&state).await {
+        Ok(settings) => settings,
+        Err(response) => return response,
+    };
+
+    let default_language = PASTE_LANGUAGES
+        .first()
+        .map(|option| option.value)
+        .unwrap_or("plain");
+
+    let form = PasteFormValues {
+        title: String::new(),
+        language: default_language.to_string(),
+        expires_in: settings.default_expiration_hours.to_string(),
+        content: String::new(),
+    };
+
+    render_paste_form(
+        &state,
+        &session,
+        settings.as_ref(),
+        StatusCode::OK,
+        form,
+        PasteFieldErrors::default(),
+        None,
+    )
+    .await
+}
+
+async fn paste_submit_handler(
+    State(state): State<AppState>,
+    session: Session,
+    Form(form): Form<PasteForm>,
+) -> Response {
+    let session_user = match current_user(&session).await {
+        Ok(Some(user)) => user,
+        Ok(None) => return Redirect::to("/login").into_response(),
+        Err(err) => {
+            error!(target: "sessions", %err, "failed to read session while submitting paste");
+            return server_error_response();
+        }
+    };
+
+    let csrf_valid = match csrf::validate_csrf_token(&session, &form.csrf_token).await {
+        Ok(valid) => valid,
+        Err(err) => {
+            error!(target: "csrf", %err, "failed to validate CSRF token on paste submit");
+            return server_error_response();
+        }
+    };
+
+    if !csrf_valid {
+        warn!(target: "csrf", user_id = session_user.id, "paste form submitted with invalid CSRF token");
+        if let Err(err) = csrf::rotate_csrf_token(&session).await {
+            error!(target: "csrf", %err, "failed to rotate CSRF token after paste CSRF failure");
+        }
+        return (StatusCode::FORBIDDEN, "Invalid CSRF token").into_response();
+    }
+
+    let settings = match current_app_settings(&state).await {
+        Ok(settings) => settings,
+        Err(response) => return response,
+    };
+
+    let language_option = resolve_paste_language(form.language.trim());
+    let canonical_language = language_option.value.to_string();
+    let title_input = form.title.trim();
+    let expires_input = form.expires_in.trim();
+    let content = form.content;
+
+    let form_values = PasteFormValues {
+        title: title_input.to_string(),
+        language: canonical_language.clone(),
+        expires_in: expires_input.to_string(),
+        content: content.clone(),
+    };
+
+    let mut field_errors = PasteFieldErrors::default();
+    let mut has_errors = false;
+
+    if title_input.len() > 120 {
+        field_errors.title = Some("Title cannot exceed 120 characters.".to_string());
+        has_errors = true;
+    }
+
+    if content.trim().is_empty() {
+        field_errors.content = Some("Enter some content before sharing.".to_string());
+        has_errors = true;
+    }
+
+    let paste_limit = settings.max_file_size_bytes.min(MAX_PASTE_SIZE_BYTES);
+    let content_len = content.as_bytes().len() as u64;
+    if content_len > paste_limit {
+        let limit_display = human_readable_size(paste_limit);
+        field_errors.content = Some(format!("Pastes must be {limit_display} or smaller."));
+        has_errors = true;
+    }
+
+    let expiration_hours = match form_values.expires_in.parse::<u64>() {
+        Ok(value) if (1..=MAX_EXPIRATION_HOURS).contains(&value) => value,
+        Ok(_) => {
+            field_errors.expires_in = Some(format!(
+                "Expiration must be between 1 and {} hours.",
+                MAX_EXPIRATION_HOURS
+            ));
+            has_errors = true;
+            0
+        }
+        Err(_) => {
+            field_errors.expires_in =
+                Some("Expiration must be provided as whole hours.".to_string());
+            has_errors = true;
+            0
+        }
+    };
+
+    if has_errors {
+        return render_paste_form(
+            &state,
+            &session,
+            settings.as_ref(),
+            StatusCode::UNPROCESSABLE_ENTITY,
+            form_values,
+            field_errors,
+            Some("Please correct the highlighted fields.".to_string()),
+        )
+        .await;
+    }
+
+    let snippet_bytes = content.into_bytes();
+    let size_bytes = match i64::try_from(snippet_bytes.len()) {
+        Ok(value) => value,
+        Err(_) => {
+            error!(
+                target: "paste",
+                size = snippet_bytes.len(),
+                "snippet size exceeds supported range"
+            );
+            return server_error_response();
+        }
+    };
+
+    let created_at = OffsetDateTime::now_utc();
+    let expires_at = created_at
+        .checked_add(TimeDuration::hours(expiration_hours as i64))
+        .map(|dt| dt.unix_timestamp());
+    let created_at_ts = created_at.unix_timestamp();
+
+    let file_id = Ulid::new().to_string();
+    let date_path = format!(
+        "{:04}/{:02}/{:02}",
+        created_at.year(),
+        u8::from(created_at.month()),
+        created_at.day()
+    );
+    let final_dir = state.config().storage.root.join(&date_path);
+
+    if let Err(err) = fs::create_dir_all(&final_dir).await {
+        error!(target: "paste", %err, "failed to prepare paste storage directory");
+        return server_error_response();
+    }
+
+    let temp_path = final_dir.join(format!("{}.uploading", file_id));
+    let final_path = final_dir.join(&file_id);
+
+    let mut file = match fs::File::create(&temp_path).await {
+        Ok(file) => file,
+        Err(err) => {
+            error!(target: "paste", %err, "failed to create temp file for paste");
+            return server_error_response();
+        }
+    };
+
+    if let Err(err) = file.write_all(&snippet_bytes).await {
+        drop(file);
+        let _ = fs::remove_file(&temp_path).await;
+        error!(target: "paste", %err, "failed to write paste contents to disk");
+        return server_error_response();
+    }
+
+    if let Err(err) = file.flush().await {
+        drop(file);
+        let _ = fs::remove_file(&temp_path).await;
+        error!(target: "paste", %err, "failed to flush paste contents to disk");
+        return server_error_response();
+    }
+    drop(file);
+
+    if let Err(err) = fs::rename(&temp_path, &final_path).await {
+        let _ = fs::remove_file(&temp_path).await;
+        error!(target: "paste", %err, "failed to finalize paste file");
+        return server_error_response();
+    }
+
+    let storage_key = format!("{}/{}", date_path, file_id);
+    let checksum_hex = format!("{:x}", Sha256::digest(&snippet_bytes));
+
+    let mut base_name = title_input.to_string();
+    if base_name.is_empty() {
+        base_name = format!("paste-{}", &file_id[..8]);
+    }
+
+    if !base_name
+        .to_ascii_lowercase()
+        .ends_with(&format!(".{}", language_option.extension))
+    {
+        if !base_name.ends_with('.') {
+            base_name.push('.');
+        }
+        base_name.push_str(language_option.extension);
+    }
+
+    let mut original_name = sanitize_filename(Some(&base_name));
+    if original_name == "upload.bin" {
+        let fallback = format!("paste-{}.{}", &file_id[..8], language_option.extension);
+        original_name = sanitize_filename(Some(&fallback));
+    }
+
+    let mut attempts = 0usize;
+    let record_path = final_path.clone();
+    let content_type = Some(language_option.content_type.to_string());
+    let code = loop {
+        let candidate = generate_download_code();
+        let record = files::NewFileRecord {
+            id: &file_id,
+            owner_user_id: Some(session_user.id),
+            code: &candidate,
+            original_name: &original_name,
+            stored_path: &storage_key,
+            size_bytes,
+            content_type: content_type.as_deref(),
+            checksum: Some(checksum_hex.as_str()),
+            created_at: created_at_ts,
+            expires_at,
+        };
+
+        match files::insert_file_record(state.db(), &record).await {
+            Ok(_) => break candidate,
+            Err(err) if is_unique_violation(&err) && attempts < MAX_CODE_GENERATION_ATTEMPTS => {
+                attempts += 1;
+                debug!(
+                    target: "files",
+                    %err,
+                    attempt = attempts,
+                    "retrying paste code generation"
+                );
+                continue;
+            }
+            Err(err) => {
+                error!(target: "files", %err, "failed to persist paste record");
+                if let Err(clean_err) = cleanup_orphaned_file(&record_path).await {
+                    warn!(
+                        target: "paste",
+                        path = %record_path.display(),
+                        %clean_err,
+                        "failed to remove orphaned paste file"
+                    );
+                }
+                return server_error_response();
+            }
+        }
+    };
+
+    if let Err(err) = csrf::rotate_csrf_token(&session).await {
+        error!(target: "csrf", %err, "failed to rotate CSRF token after paste");
+    }
+
+    info!(
+        target: "paste",
+        user_id = session_user.id,
+        username = session_user.username,
+        file_id = %file_id,
+        code = %code,
+        size_bytes = size_bytes,
+        language = canonical_language,
+        "paste created successfully"
+    );
+
+    Redirect::to(&format!("/f/{}", code)).into_response()
+}
+
 #[derive(Debug)]
 struct PersistedUpload {
     file_id: String,
@@ -1877,6 +2357,22 @@ fn generate_download_code() -> String {
     )
 }
 
+fn resolve_paste_language(value: &str) -> &'static PasteLanguageOption {
+    if PASTE_LANGUAGES.is_empty() {
+        panic!("PASTE_LANGUAGES must contain at least one entry");
+    }
+
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return &PASTE_LANGUAGES[0];
+    }
+
+    PASTE_LANGUAGES
+        .iter()
+        .find(|option| option.value.eq_ignore_ascii_case(trimmed))
+        .unwrap_or(&PASTE_LANGUAGES[0])
+}
+
 fn normalize_lookup_code(raw: &str) -> Option<String> {
     let trimmed = raw.trim();
     if trimmed.is_empty() {
@@ -1969,6 +2465,29 @@ async fn render_upload_form(
 
     if let Some(message) = error_message {
         template = template.with_error_message(message);
+    }
+
+    (status, HtmlTemplate::new(template)).into_response()
+}
+
+async fn render_paste_form(
+    state: &AppState,
+    session: &Session,
+    settings: &AppSettings,
+    status: StatusCode,
+    form: PasteFormValues,
+    field_errors: PasteFieldErrors,
+    general_error: Option<String>,
+) -> Response {
+    let layout = layout_from_session(state, session, "Paste").await;
+    let limit_bytes = settings.max_file_size_bytes.min(MAX_PASTE_SIZE_BYTES);
+    let max_size_display = human_readable_size(limit_bytes);
+
+    let mut template = PasteTemplate::new(layout, form, MAX_EXPIRATION_HOURS, max_size_display)
+        .with_field_errors(field_errors);
+
+    if let Some(message) = general_error {
+        template = template.with_general_error(message);
     }
 
     (status, HtmlTemplate::new(template)).into_response()
@@ -2829,26 +3348,73 @@ fn download_unauthorized_response() -> Response {
 }
 
 fn build_content_disposition_header(filename: &str) -> HeaderValue {
-    let mut safe = String::with_capacity(filename.len());
+    let mut fallback = String::with_capacity(filename.len());
+    let mut contains_non_ascii = false;
 
     for ch in filename.chars() {
         if matches!(ch, ' '..='~') && ch != '"' && ch != '\\' {
-            safe.push(ch);
+            fallback.push(ch);
         } else {
-            safe.push('_');
+            contains_non_ascii |= !ch.is_ascii();
+            fallback.push('_');
         }
     }
 
-    if safe.is_empty() {
-        safe.push_str("download.bin");
+    if fallback.is_empty() {
+        fallback.push_str("download.bin");
     }
 
-    if safe.len() > 255 {
-        safe.truncate(255);
+    if fallback.len() > 255 {
+        fallback.truncate(255);
     }
 
-    let header_value = format!("attachment; filename=\"{safe}\"");
+    let truncated_original: String = filename.chars().take(255).collect();
+    let needs_extended = contains_non_ascii || truncated_original.len() != filename.len();
+
+    let header_value = if needs_extended {
+        let encoded = encode_filename_for_rfc5987(&truncated_original);
+        format!("attachment; filename=\"{fallback}\"; filename*=UTF-8''{encoded}")
+    } else {
+        format!("attachment; filename=\"{fallback}\"")
+    };
+
     HeaderValue::from_str(&header_value).unwrap_or_else(|_| HeaderValue::from_static("attachment"))
+}
+
+fn encode_filename_for_rfc5987(input: &str) -> String {
+    let mut encoded = String::with_capacity(input.len());
+
+    for byte in input.as_bytes() {
+        match *byte {
+            b'A'..=b'Z'
+            | b'a'..=b'z'
+            | b'0'..=b'9'
+            | b'!'
+            | b'#'
+            | b'$'
+            | b'&'
+            | b'+'
+            | b'-'
+            | b'.'
+            | b'^'
+            | b'_'
+            | b'`'
+            | b'|'
+            | b'~' => encoded.push(*byte as char),
+            _ => {
+                encoded.push('%');
+                encoded.push_str(&format!("{:02X}", byte));
+            }
+        }
+    }
+
+    encoded
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct HomeQueryParams {
+    #[serde(default)]
+    flash: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -2861,6 +3427,20 @@ struct LoginForm {
 #[derive(Debug, Deserialize)]
 struct GenerateLinkForm {
     csrf_token: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct DeleteFileForm {
+    csrf_token: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct PasteForm {
+    csrf_token: String,
+    title: String,
+    language: String,
+    expires_in: String,
+    content: String,
 }
 
 #[derive(Debug, Deserialize)]

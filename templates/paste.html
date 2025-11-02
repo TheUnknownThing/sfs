@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section style="max-width: 720px; margin: 0 auto;">
+  <hgroup>
+    <h1>
+      <i data-feather="edit-3" style="width: 28px; height: 28px; vertical-align: middle; margin-right: 0.5rem;"></i>
+      Pastebin
+    </h1>
+  </hgroup>
+
+  {% if let Some(message) = general_error %}
+  <article class="card error" role="alert">
+    <p style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+      <i data-feather="alert-triangle" style="width: 18px; height: 18px;"></i>
+      {{ message }}
+    </p>
+  </article>
+  {% endif %}
+
+  <article>
+    <form method="post" action="/paste" novalidate>
+      {% if let Some(csrf) = layout.csrf %}
+      <input type="hidden" name="csrf_token" value="{{ csrf.token }}">
+      {% endif %}
+      <div class="grid">
+        <div>
+          <label for="paste-title">Title (optional)</label>
+          <input
+            id="paste-title"
+            name="title"
+            type="text"
+            maxlength="120"
+            placeholder="Example: Error log"
+            value="{{ form.title }}"
+          />
+          {% if let Some(error) = field_errors.title %}
+          <small class="error">{{ error }}</small>
+          {% endif %}
+        </div>
+        <div>
+          <label for="paste-language">Language</label>
+          <select id="paste-language" name="language">
+            {% for option in languages %}
+            <option value="{{ option.value }}"{% if form.language == option.value %} selected{% endif %}>
+              {{ option.label }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label for="paste-expires">Expires in (hours)</label>
+          <input
+            id="paste-expires"
+            name="expires_in"
+            type="number"
+            min="1"
+            max="{{ max_expiration_hours }}"
+            value="{{ form.expires_in }}"
+            required
+          />
+          {% if let Some(error) = field_errors.expires_in %}
+          <small class="error">{{ error }}</small>
+          {% endif %}
+        </div>
+      </div>
+
+      <label for="paste-content" style="margin-top: 1.5rem;">Content</label>
+      <textarea
+        id="paste-content"
+        name="content"
+        rows="14"
+        placeholder="Paste your snippet here..."
+        required
+      >{{ form.content }}</textarea>
+      {% if let Some(error) = field_errors.content %}
+      <small class="error">{{ error }}</small>
+      {% endif %}
+
+      <small style="display: block; margin-top: 0.5rem; color: var(--pico-muted-color);">
+        Max size: {{ max_size_display }}
+      </small>
+
+      <footer style="margin-top: 1.5rem; padding-top: 0; border-top: none;">
+        <div class="button-group">
+          <button type="submit" class="icon-button">
+            <i data-feather="share-2"></i>
+            Share paste
+          </button>
+        </div>
+      </footer>
+    </form>
+  </article>
+</section>
+{% endblock %}
+
+{% block body_scripts %}{% endblock %}

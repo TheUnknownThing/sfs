@@ -86,6 +86,17 @@
                         Generate link
                     </button>
                 </form>
+                {% if can_delete %}
+                <form method="post" action="/f/{{ code }}/delete" style="flex: 1;" data-delete-form>
+                    {% if let Some(csrf) = layout.csrf %}
+                    <input type="hidden" name="csrf_token" value="{{ csrf.token }}">
+                    {% endif %}
+                    <button type="submit" class="icon-button secondary outline" style="width: 100%; color: var(--pico-del-color);" data-delete-button>
+                        <i data-feather="trash-2"></i>
+                        Delete file
+                    </button>
+                </form>
+                {% endif %}
             </div>
         </footer>
     </article>
@@ -190,5 +201,39 @@
             }, 2500);
         }
     }
+
+    function attachDeleteHandlers() {
+        "use strict";
+
+        const activateIcons = () => {
+            if (typeof activateFeatherIcons === "function") {
+                activateFeatherIcons();
+            } else if (window.feather) {
+                window.feather.replace();
+            }
+        };
+
+        document.querySelectorAll("[data-delete-form]").forEach((form) => {
+            form.addEventListener("submit", (event) => {
+                const button = form.querySelector("[data-delete-button]");
+                const confirmed = window.confirm(
+                    "This will permanently remove the shared file. Continue?"
+                );
+
+                if (!confirmed) {
+                    event.preventDefault();
+                    return;
+                }
+
+                if (button) {
+                    button.disabled = true;
+                    button.innerHTML = '<i data-feather="loader"></i> Deleting...';
+                    activateIcons();
+                }
+            });
+        });
+    }
+
+    document.addEventListener("DOMContentLoaded", attachDeleteHandlers);
 </script>
 {% endblock %}

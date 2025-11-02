@@ -41,6 +41,15 @@
 </style>
 {% endblock %} {% block content %}
 <div class="home-wrap">
+  {% if let Some(message) = flash_message %}
+  <article class="card success" role="status">
+    <p style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+      <i data-feather="check-circle" style="width: 18px; height: 18px;"></i>
+      {{ message }}
+    </p>
+  </article>
+  {% endif %}
+
   <article class="tile">
     <h2>Upload files</h2>
     <div class="stack">
@@ -48,6 +57,10 @@
       <a role="button" class="icon-button" href="/upload">
         <i data-feather="upload"></i>
         Upload a file
+      </a>
+      <a role="button" class="icon-button secondary outline" href="/paste">
+        <i data-feather="edit-3"></i>
+        Create a paste
       </a>
       {% else %}
       <small>Please log in to upload.</small>

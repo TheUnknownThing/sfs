@@ -147,6 +147,7 @@ impl<T: Template> IntoResponse for HtmlTemplate<T> {
 pub struct HomeTemplate {
     pub layout: LayoutContext,
     pub recent_uploads: Vec<HomeUploadRow>,
+    pub flash_message: Option<String>,
 }
 
 impl HomeTemplate {
@@ -154,11 +155,17 @@ impl HomeTemplate {
         Self {
             layout,
             recent_uploads: Vec::new(),
+            flash_message: None,
         }
     }
 
     pub fn with_recent_uploads(mut self, uploads: Vec<HomeUploadRow>) -> Self {
         self.recent_uploads = uploads;
+        self
+    }
+
+    pub fn with_flash_message(mut self, message: Option<String>) -> Self {
+        self.flash_message = message;
         self
     }
 }
@@ -231,6 +238,53 @@ pub struct HomeUploadRow {
     pub created_display: String,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct PasteLanguageOption {
+    pub value: &'static str,
+    pub label: &'static str,
+    pub extension: &'static str,
+    pub content_type: &'static str,
+}
+
+pub const PASTE_LANGUAGES: &[PasteLanguageOption] = &[
+    PasteLanguageOption {
+        value: "plain",
+        label: "Plain text",
+        extension: "txt",
+        content_type: "text/plain; charset=utf-8",
+    },
+    PasteLanguageOption {
+        value: "rust",
+        label: "Rust",
+        extension: "rs",
+        content_type: "text/x-rust",
+    },
+    PasteLanguageOption {
+        value: "python",
+        label: "Python",
+        extension: "py",
+        content_type: "text/x-python",
+    },
+    PasteLanguageOption {
+        value: "javascript",
+        label: "JavaScript",
+        extension: "js",
+        content_type: "application/javascript",
+    },
+    PasteLanguageOption {
+        value: "json",
+        label: "JSON",
+        extension: "json",
+        content_type: "application/json",
+    },
+    PasteLanguageOption {
+        value: "markdown",
+        label: "Markdown",
+        extension: "md",
+        content_type: "text/markdown",
+    },
+];
+
 #[derive(Template)]
 #[template(path = "file.html", escape = "html")]
 pub struct FileTemplate {
@@ -242,6 +296,7 @@ pub struct FileTemplate {
     pub expires_display: Option<String>,
     pub content_type: Option<String>,
     pub checksum: Option<String>,
+    pub can_delete: bool,
 }
 
 impl FileTemplate {
@@ -262,6 +317,7 @@ impl FileTemplate {
             expires_display,
             content_type: None,
             checksum: None,
+            can_delete: false,
         }
     }
 
@@ -272,6 +328,11 @@ impl FileTemplate {
 
     pub fn with_checksum(mut self, checksum: Option<String>) -> Self {
         self.checksum = checksum;
+        self
+    }
+
+    pub fn with_delete_permission(mut self, allowed: bool) -> Self {
+        self.can_delete = allowed;
         self
     }
 }
@@ -496,6 +557,62 @@ impl UserManagementTemplate {
 
     pub fn with_success_message(mut self, message: impl Into<String>) -> Self {
         self.success_message = Some(message.into());
+        self
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct PasteFormValues {
+    pub title: String,
+    pub language: String,
+    pub expires_in: String,
+    pub content: String,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct PasteFieldErrors {
+    pub title: Option<String>,
+    pub expires_in: Option<String>,
+    pub content: Option<String>,
+}
+
+#[derive(Template)]
+#[template(path = "paste.html", escape = "html")]
+pub struct PasteTemplate {
+    pub layout: LayoutContext,
+    pub form: PasteFormValues,
+    pub field_errors: PasteFieldErrors,
+    pub general_error: Option<String>,
+    pub max_expiration_hours: u64,
+    pub max_size_display: String,
+    pub languages: &'static [PasteLanguageOption],
+}
+
+impl PasteTemplate {
+    pub fn new(
+        layout: LayoutContext,
+        form: PasteFormValues,
+        max_expiration_hours: u64,
+        max_size_display: impl Into<String>,
+    ) -> Self {
+        Self {
+            layout,
+            form,
+            field_errors: PasteFieldErrors::default(),
+            general_error: None,
+            max_expiration_hours,
+            max_size_display: max_size_display.into(),
+            languages: PASTE_LANGUAGES,
+        }
+    }
+
+    pub fn with_field_errors(mut self, errors: PasteFieldErrors) -> Self {
+        self.field_errors = errors;
+        self
+    }
+
+    pub fn with_general_error(mut self, message: impl Into<String>) -> Self {
+        self.general_error = Some(message.into());
         self
     }
 }

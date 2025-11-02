@@ -86,7 +86,6 @@
                 <input type="checkbox" id="add-user-is-admin" name="is_admin" {% if add_form.is_admin %}checked{% endif %}>
                 Grant administrator privileges
             </label>
-            <small>Administrators can change global settings and manage other users.</small>
 
             <div class="button-group" style="margin-top: 1.5rem;">
                 <button type="submit" class="icon-button">
@@ -155,7 +154,7 @@
                     {% if let Some(csrf) = layout.csrf %}
                     <input type="hidden" name="csrf_token" value="{{ csrf.token }}">
                     {% endif %}
-                    <button type="submit" class="contrast" style="background: color-mix(in srgb, var(--pico-del-color) 20%, var(--pico-card-background-color));">
+                    <button type="submit" class="contrast" style="background: var(--pico-del-color 20%);">
                         <i data-feather="trash-2"></i>
                         Delete user
                     </button>

@@ -315,6 +315,7 @@
           <li><a href="/" class="contrast">Home</a></li>
           {% if let Some(user) = layout.current_user %}
           <li><a href="/upload" class="contrast">Upload</a></li>
+          <li><a href="/paste" class="contrast">Pastebin</a></li>
           {% if user.is_admin %}
           <li><a href="/settings" class="contrast">Settings</a></li>
           <li><a href="/admin/users" class="contrast">Users</a></li>
