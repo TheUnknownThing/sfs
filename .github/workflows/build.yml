@@ -41,8 +41,9 @@ jobs:
 
       - name: Prepare sqlx query cache
         run: |
-          export DATABASE_URL=sqlite:data/db.sqlite
-          touch $DATABASE_URL
+          mkdir -p data
+          touch data/db.sqlite
+          export DATABASE_URL="sqlite:data/db.sqlite"
           cargo sqlx prepare -- --all-targets
         shell: bash
 
