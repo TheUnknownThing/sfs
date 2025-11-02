@@ -1,94 +1,109 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section style="max-width: 720px; margin: 0 auto;">
-  <hgroup>
-    <h1>
-      <i data-feather="edit-3" style="width: 28px; height: 28px; vertical-align: middle; margin-right: 0.5rem;"></i>
+{% set card_base = "rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-xl shadow-slate-950/40 backdrop-blur" %}
+{% set button_primary = "inline-flex items-center justify-center gap-2 rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-sm transition hover:bg-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300" %}
+{% set input_class = "mt-2 w-full rounded-lg border border-slate-800 bg-slate-900/70 px-3 py-2 text-base text-slate-100 placeholder:text-slate-500 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40" %}
+
+<section class="mx-auto w-full max-w-4xl space-y-6 py-10">
+  <div class="space-y-2">
+    <h1 class="flex items-center gap-3 text-3xl font-semibold text-white">
+      <i data-feather="edit-3" class="h-7 w-7 text-sky-400"></i>
       Pastebin
     </h1>
-  </hgroup>
+    <p class="text-sm text-slate-400">Create sharable snippets with syntax hints and expiration controls.</p>
+  </div>
 
   {% if let Some(message) = general_error %}
-  <article class="card error" role="alert">
-    <p style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
-      <i data-feather="alert-triangle" style="width: 18px; height: 18px;"></i>
-      {{ message }}
+  <article class="rounded-2xl border border-rose-500/60 bg-rose-500/10 p-4 text-sm text-rose-100 shadow-lg shadow-rose-500/20" role="alert">
+    <p class="flex items-center gap-2">
+      <i data-feather="alert-triangle" class="h-4 w-4"></i>
+      <strong class="font-semibold">Error:</strong> {{ message }}
     </p>
   </article>
   {% endif %}
 
-  <article>
-    <form method="post" action="/paste" novalidate>
+  <article class="{{ card_base }} space-y-6">
+    <form method="post" action="/paste" novalidate class="space-y-6">
       {% if let Some(csrf) = layout.csrf %}
-      <input type="hidden" name="csrf_token" value="{{ csrf.token }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf.token }}" />
       {% endif %}
-      <div class="grid">
-        <div>
-          <label for="paste-title">Title (optional)</label>
-          <input
-            id="paste-title"
-            name="title"
-            type="text"
-            maxlength="120"
-            placeholder="Example: Error log"
-            value="{{ form.title }}"
-          />
+
+      <div class="grid gap-6 md:grid-cols-3">
+        <div class="md:col-span-2">
+          <label for="paste-title" class="block text-sm font-semibold text-slate-200">
+            Title (optional)
+            <input
+              id="paste-title"
+              name="title"
+              type="text"
+              maxlength="120"
+              placeholder="Example: Error log"
+              value="{{ form.title }}"
+              class="{{ input_class }}"
+            />
+          </label>
           {% if let Some(error) = field_errors.title %}
-          <small class="error">{{ error }}</small>
+          <small class="mt-2 block text-sm font-medium text-rose-300">{{ error }}</small>
           {% endif %}
         </div>
         <div>
-          <label for="paste-language">Language</label>
-          <select id="paste-language" name="language">
-            {% for option in languages %}
-            <option value="{{ option.value }}"{% if form.language == option.value %} selected{% endif %}>
-              {{ option.label }}
-            </option>
-            {% endfor %}
-          </select>
+          <label for="paste-language" class="block text-sm font-semibold text-slate-200">
+            Language
+            <select id="paste-language" name="language" class="{{ input_class }}">
+              {% for option in languages %}
+              <option value="{{ option.value }}"{% if form.language == option.value %} selected{% endif %}>
+                {{ option.label }}
+              </option>
+              {% endfor %}
+            </select>
+          </label>
         </div>
         <div>
-          <label for="paste-expires">Expires in (hours)</label>
-          <input
-            id="paste-expires"
-            name="expires_in"
-            type="number"
-            min="1"
-            max="{{ max_expiration_hours }}"
-            value="{{ form.expires_in }}"
-            required
-          />
+          <label for="paste-expires" class="block text-sm font-semibold text-slate-200">
+            Expires in (hours)
+            <input
+              id="paste-expires"
+              name="expires_in"
+              type="number"
+              min="1"
+              max="{{ max_expiration_hours }}"
+              value="{{ form.expires_in }}"
+              required
+              class="{{ input_class }}"
+            />
+          </label>
           {% if let Some(error) = field_errors.expires_in %}
-          <small class="error">{{ error }}</small>
+          <small class="mt-2 block text-sm font-medium text-rose-300">{{ error }}</small>
           {% endif %}
         </div>
       </div>
 
-      <label for="paste-content" style="margin-top: 1.5rem;">Content</label>
-      <textarea
-        id="paste-content"
-        name="content"
-        rows="14"
-        placeholder="Paste your snippet here..."
-        required
-      >{{ form.content }}</textarea>
-      {% if let Some(error) = field_errors.content %}
-      <small class="error">{{ error }}</small>
-      {% endif %}
+      <div>
+        <label for="paste-content" class="block text-sm font-semibold text-slate-200">
+          Content
+        </label>
+        <textarea
+          id="paste-content"
+          name="content"
+          rows="14"
+          placeholder="Paste your snippet here..."
+          required
+          class="{{ input_class }} min-h-[320px] font-mono text-sm"
+        >{{ form.content }}</textarea>
+        {% if let Some(error) = field_errors.content %}
+        <small class="mt-2 block text-sm font-medium text-rose-300">{{ error }}</small>
+        {% endif %}
+      </div>
 
-      <small style="display: block; margin-top: 0.5rem; color: var(--pico-muted-color);">
-        Max size: {{ max_size_display }}
-      </small>
+      <p class="text-sm text-slate-400">Max size: {{ max_size_display }}</p>
 
-      <footer style="margin-top: 1.5rem; padding-top: 0; border-top: none;">
-        <div class="button-group">
-          <button type="submit" class="icon-button">
-            <i data-feather="share-2"></i>
-            Share paste
-          </button>
-        </div>
-      </footer>
+      <div class="flex justify-end">
+        <button type="submit" class="{{ button_primary }}">
+          <i data-feather="share-2" class="h-4 w-4"></i>
+          Share paste
+        </button>
+      </div>
     </form>
   </article>
 </section>

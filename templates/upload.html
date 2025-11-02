@@ -1,54 +1,80 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section style="max-width: 700px; margin: 0 auto;">
-    <hgroup>
-        <h1>
-            <i data-feather="upload" style="width: 28px; height: 28px; vertical-align: middle; margin-right: 0.5rem;"></i>
+{% set card_base = "rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-xl shadow-slate-950/40 backdrop-blur" %}
+{% set button_primary = "inline-flex items-center justify-center gap-2 rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-sm transition hover:bg-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300" %}
+{% set input_class = "mt-3 w-full rounded-lg border border-slate-800 bg-slate-900/70 px-3 py-2 text-base text-slate-100 placeholder:text-slate-500 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40" %}
+
+<section class="mx-auto w-full max-w-3xl space-y-6 py-10">
+    <div class="space-y-2">
+        <h1 class="flex items-center gap-3 text-3xl font-semibold text-white">
+            <i data-feather="upload" class="h-7 w-7 text-sky-400"></i>
             Upload a file
         </h1>
-        <p>Maximum size: <strong>{{ max_file_size_display }}</strong></p>
-    </hgroup>
+        <p class="text-sm text-slate-400">
+            Maximum size: <strong class="text-slate-200">{{ max_file_size_display }}</strong>
+        </p>
+    </div>
 
     {% if let Some(error) = error_message %}
-    <div class="card error" role="alert">
-        <strong>Error:</strong> {{ error }}
+    <div class="rounded-2xl border border-rose-500/60 bg-rose-500/10 p-4 text-sm text-rose-100 shadow-lg shadow-rose-500/20" role="alert">
+        <strong class="font-semibold">Error:</strong> {{ error }}
     </div>
     {% endif %}
 
-    <article>
-        <form method="post" action="/upload" enctype="multipart/form-data">
+    <article class="{{ card_base }} space-y-6">
+        <form method="post" action="/upload" enctype="multipart/form-data" class="space-y-6">
             {% if let Some(csrf) = layout.csrf %}
-            <input type="hidden" name="csrf_token" value="{{ csrf.token }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf.token }}" />
             {% endif %}
-            
-            <label>
-                <strong>
-                    <i data-feather="file" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 0.25rem;"></i>
+
+            <label class="block text-sm font-semibold text-slate-200">
+                <span class="flex items-center gap-2">
+                    <i data-feather="file" class="h-4 w-4 text-slate-400"></i>
                     File
-                </strong>
-                <input type="file" name="file" required aria-required="true" />
+                </span>
+                <input
+                    type="file"
+                    name="file"
+                    required
+                    aria-required="true"
+                    class="{{ input_class }} file:mr-4 file:rounded-md file:border-0 file:bg-sky-500 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-slate-950 hover:file:bg-sky-400"
+                />
             </label>
 
-            <label>
-                <strong>
-                    <i data-feather="clock" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 0.25rem;"></i>
+            <label class="block text-sm font-semibold text-slate-200">
+                <span class="flex items-center gap-2">
+                    <i data-feather="clock" class="h-4 w-4 text-slate-400"></i>
                     Expires in (hours)
-                </strong>
-                <input type="number" name="expires_in" min="1" max="{{ max_expiration_hours }}" value="{{ expires_in_value }}" required aria-required="true" />
-                <small>Files will be removed automatically after the selected time.</small>
+                </span>
+                <input
+                    type="number"
+                    name="expires_in"
+                    min="1"
+                    max="{{ max_expiration_hours }}"
+                    value="{{ expires_in_value }}"
+                    required
+                    aria-required="true"
+                    class="{{ input_class }}"
+                />
+                <small class="mt-2 block text-sm text-slate-400">Files will be removed automatically after the selected time.</small>
             </label>
 
-            <label>
-                <strong>
-                    <i data-feather="edit-3" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 0.25rem;"></i>
-                    Notes <span style="font-weight: normal; color: var(--pico-muted-color);">(optional)</span>
-                </strong>
-                <textarea name="notes" rows="3" placeholder="Internal notes for this upload"></textarea>
+            <label class="block text-sm font-semibold text-slate-200">
+                <span class="flex items-center gap-2">
+                    <i data-feather="edit-3" class="h-4 w-4 text-slate-400"></i>
+                    Notes <span class="text-sm font-normal text-slate-400">(optional)</span>
+                </span>
+                <textarea
+                    name="notes"
+                    rows="3"
+                    placeholder="Internal notes for this upload"
+                    class="{{ input_class }} min-h-[120px]"
+                ></textarea>
             </label>
 
-            <button type="submit" class="icon-button" style="width: 100%; margin-top: 1rem;">
-                <i data-feather="upload-cloud"></i>
+            <button type="submit" class="{{ button_primary }} w-full justify-center">
+                <i data-feather="upload-cloud" class="h-4 w-4"></i>
                 Start upload
             </button>
         </form>
