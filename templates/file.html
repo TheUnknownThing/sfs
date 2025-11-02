@@ -1,239 +1,348 @@
-{% extends "base.html" %}
+{% extends "base.html" %} {% block content %} {% set card_base = "rounded-2xl
+border border-gray-800 bg-gray-900/70 p-6 shadow-xl shadow-gray-950/40
+backdrop-blur" %} {% set card_subtle = "rounded-2xl border border-gray-800
+bg-gray-900/60 p-5 text-gray-200 shadow-lg shadow-gray-950/40" %} {% set
+button_primary = "inline-flex items-center justify-center gap-2 rounded-lg
+bg-sky-500 px-4 py-2 text-sm font-semibold text-gray-950 shadow-sm transition
+hover:bg-sky-400 focus-visible:outline focus-visible:outline-2
+focus-visible:outline-offset-2 focus-visible:outline-sky-300" %} {% set
+button_outline = "inline-flex items-center justify-center gap-2 rounded-lg
+border border-gray-700 px-4 py-2 text-sm font-semibold text-gray-200 transition
+hover:border-sky-400 hover:text-white focus-visible:outline
+focus-visible:outline-2 focus-visible:outline-offset-2
+focus-visible:outline-sky-300" %} {% set button_danger = "inline-flex
+items-center justify-center gap-2 rounded-lg border border-rose-500/70 px-4 py-2
+text-sm font-semibold text-rose-200 transition hover:bg-rose-500/10
+focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
+focus-visible:outline-rose-400" %} {% set copy_button = "relative inline-flex
+items-center justify-center gap-2 rounded-lg border border-gray-700
+bg-gray-900/70 px-4 py-2 text-sm font-semibold text-gray-100 transition
+hover:border-sky-400 hover:text-white focus-visible:outline
+focus-visible:outline-2 focus-visible:outline-offset-2
+focus-visible:outline-sky-300 data-[copy-state=copied]:after:absolute
+data-[copy-state=copied]:after:-top-10 data-[copy-state=copied]:after:left-1/2
+data-[copy-state=copied]:after:-translate-x-1/2
+data-[copy-state=copied]:after:rounded-full
+data-[copy-state=copied]:after:bg-emerald-400
+data-[copy-state=copied]:after:px-3 data-[copy-state=copied]:after:py-1
+data-[copy-state=copied]:after:text-xs
+data-[copy-state=copied]:after:font-semibold
+data-[copy-state=copied]:after:text-gray-950
+data-[copy-state=copied]:after:shadow-lg
+data-[copy-state=copied]:after:content-['Copied!']
+data-[copy-state=copied]:after:opacity-100
+data-[copy-state=copied]:after:transition
+data-[copy-state=copied]:after:duration-300
+data-[copy-state=copied]:after:ease-out
+data-[copy-state=copied]:after:whitespace-nowrap" %}
 
-{% block content %}
-<section style="max-width: 800px; margin: 0 auto;">
-    <hgroup>
-        <h1>
-            <i data-feather="file-text" style="width: 28px; height: 28px; vertical-align: middle; margin-right: 0.5rem;"></i>
-            File details
-        </h1>
-        <p>Share the code below to let anyone check the status of this file.</p>
-    </hgroup>
+<section class="mx-auto w-full max-w-4xl space-y-8 py-10">
+  <div class="space-y-2">
+    <h1 class="flex items-center gap-3 text-3xl font-semibold text-white">
+      <i data-feather="file-text" class="h-7 w-7 text-sky-400"></i>
+      File details
+    </h1>
+    <p class="text-sm text-gray-400">
+      Share this code so others can check the status and download the file
+      securely.
+    </p>
+  </div>
 
-    <article>
-        <header>
-            <h2 style="display: flex; align-items: center; gap: 0.5rem; word-break: break-all;">
-                <i data-feather="file" style="width: 24px; height: 24px; flex-shrink: 0;"></i>
-                {{ original_name }}
-            </h2>
-        </header>
+  <article class="{{ card_base }} space-y-6">
+    <header class="flex items-start gap-3">
+      <i data-feather="file" class="h-6 w-6 flex-shrink-0 text-gray-400"></i>
+      <h2 class="break-words text-xl font-semibold text-white">
+        {{ original_name }}
+      </h2>
+    </header>
 
-        <div class="card" style="background: color-mix(in srgb, var(--pico-primary) 10%, var(--pico-card-background-color)); border-color: var(--pico-primary);">
-            <label for="lookup-code" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--pico-primary);">
-                <i data-feather="hash" style="width: 16px; height: 16px; vertical-align: middle;"></i>
-                Share Code
-            </label>
-            <div style="display: flex; gap: 0.5rem; align-items: center;">
-                <input id="lookup-code" type="text" value="{{ code }}" readonly style="flex: 1; font-family: monospace; font-size: 1.1rem; font-weight: bold;">
-                <button type="button" class="secondary outline" data-copy data-copy-target="#lookup-code" style="white-space: nowrap;">
-                    <i data-feather="copy" aria-hidden="true"></i>
-                    Copy
-                </button>
-            </div>
-        </div>
-
-        <dl>
-            <dt><i data-feather="file" style="width: 14px; height: 14px; vertical-align: middle;"></i> File name</dt>
-            <dd>{{ original_name }}</dd>
-            
-            <dt><i data-feather="hard-drive" style="width: 14px; height: 14px; vertical-align: middle;"></i> Size</dt>
-            <dd><strong>{{ size_display }}</strong></dd>
-            
-            <dt><i data-feather="upload" style="width: 14px; height: 14px; vertical-align: middle;"></i> Uploaded</dt>
-            <dd><time>{{ created_display }}</time></dd>
-            
-            <dt><i data-feather="clock" style="width: 14px; height: 14px; vertical-align: middle;"></i> Expires</dt>
-            <dd>
-                {% if let Some(expires) = expires_display %}
-                <strong style="color: var(--pico-primary);">{{ expires }}</strong>
-                {% else %}
-                <span style="color: var(--pico-muted-color);">Never</span>
-                {% endif %}
-            </dd>
-            
-            {% if let Some(kind) = content_type %}
-            <dt><i data-feather="tag" style="width: 14px; height: 14px; vertical-align: middle;"></i> Content type</dt>
-            <dd><code style="font-size: 0.875rem;">{{ kind }}</code></dd>
-            {% endif %}
-            
-            {% if let Some(signature) = checksum %}
-            <dt><i data-feather="check-circle" style="width: 14px; height: 14px; vertical-align: middle;"></i> Checksum</dt>
-            <dd><code style="font-size: 0.75rem; word-break: break-all;">{{ signature }}</code></dd>
-            {% endif %}
-        </dl>
-
-        <footer>
-            <div class="button-group">
-                <button 
-                    type="button" 
-                    class="icon-button"
-                    style="flex: 1;"
-                    onclick="handleDownload(event, '{{ code }}')">
-                    <i data-feather="download"></i>
-                    Download file
-                </button>
-                <form method="post" action="/f/{{ code }}/link"
-                      hx-post="/f/{{ code }}/link"
-                      hx-target="#direct-link-output"
-                      hx-swap="outerHTML"
-                      hx-disabled-elt="button"
-                      style="flex: 1;">
-                    {% if let Some(csrf) = layout.csrf %}
-                    <input type="hidden" name="csrf_token" value="{{ csrf.token }}">
-                    {% endif %}
-                    <button type="submit" class="icon-button secondary outline" style="width: 100%;">
-                        <i data-feather="link"></i>
-                        Generate link
-                    </button>
-                </form>
-                {% if can_delete %}
-                <form method="post" action="/f/{{ code }}/delete" style="flex: 1;" data-delete-form>
-                    {% if let Some(csrf) = layout.csrf %}
-                    <input type="hidden" name="csrf_token" value="{{ csrf.token }}">
-                    {% endif %}
-                    <button type="submit" class="icon-button secondary outline" style="width: 100%; color: var(--pico-del-color);" data-delete-button>
-                        <i data-feather="trash-2"></i>
-                        Delete file
-                    </button>
-                </form>
-                {% endif %}
-            </div>
-        </footer>
-    </article>
-
-    <div id="direct-link-output" class="card" style="background: color-mix(in srgb, var(--pico-muted-color) 5%, var(--pico-card-background-color));" role="region" aria-live="polite">
-        <p style="text-align: center; color: var(--pico-muted-color); margin: 0;">
-            <i data-feather="info" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 0.5rem;"></i>
-            Generate a direct link to download this file directly.
-        </p>
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <label for="lookup-code" class="flex items-center gap-2 font-semibold text-sky-200">
+        <span class="inline-flex items-center gap-2">
+          <i data-feather="hash" class="h-4 w-4"></i>
+          Code
+        </span>
+      </label>
+      <input
+        id="lookup-code"
+        type="text"
+        value="{{ code }}"
+        readonly
+        class="w-full rounded-lg border border-sky-400/50 bg-gray-950/60 px-3 py-2 font-mono text-lg font-semibold text-sky-100 focus:border-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-500/40"
+      />
+      <button
+        type="button"
+        class="{{ copy_button }} whitespace-nowrap"
+        data-copy
+        data-copy-target="#lookup-code"
+      >
+        <i data-feather="copy" aria-hidden="true" class="h-4 w-4"></i>
+        Copy
+      </button>
     </div>
+
+    <dl
+      class="grid grid-cols-[minmax(160px,1fr)_minmax(0,2fr)] gap-x-6 gap-y-4 text-sm text-gray-200"
+    >
+      <div class="contents">
+        <dt class="flex items-center gap-2 font-semibold text-gray-400">
+          <i data-feather="file" class="h-4 w-4"></i>
+          File name
+        </dt>
+        <dd class="font-medium text-white">{{ original_name }}</dd>
+      </div>
+      <div class="contents">
+        <dt class="flex items-center gap-2 font-semibold text-gray-400">
+          <i data-feather="hard-drive" class="h-4 w-4"></i>
+          Size
+        </dt>
+        <dd><strong>{{ size_display }}</strong></dd>
+      </div>
+      <div class="contents">
+        <dt class="flex items-center gap-2 font-semibold text-gray-400">
+          <i data-feather="upload" class="h-4 w-4"></i>
+          Uploaded
+        </dt>
+        <dd><time class="text-gray-300">{{ created_display }}</time></dd>
+      </div>
+      <div class="contents">
+        <dt class="flex items-center gap-2 font-semibold text-gray-400">
+          <i data-feather="clock" class="h-4 w-4"></i>
+          Expires
+        </dt>
+        <dd>
+          {% if let Some(expires) = expires_display %}
+          <strong class="text-gray-300">{{ expires }}</strong>
+          {% else %}
+          <span class="text-gray-500">Never</span>
+          {% endif %}
+        </dd>
+      </div>
+      {% if let Some(kind) = content_type %}
+      <div class="contents">
+        <dt class="flex items-center gap-2 font-semibold text-gray-400">
+          <i data-feather="tag" class="h-4 w-4"></i>
+          Content type
+        </dt>
+        <dd>
+          <code class="rounded bg-gray-900/70 px-2 py-1 text-xs text-gray-200"
+            >{{ kind }}</code
+          >
+        </dd>
+      </div>
+      {% endif %} {% if let Some(signature) = checksum %}
+      <div class="contents">
+        <dt class="flex items-center gap-2 font-semibold text-gray-400">
+          <i data-feather="check-circle" class="h-4 w-4"></i>
+          Checksum
+        </dt>
+        <dd>
+          <code
+            class="block break-all rounded bg-gray-900/70 px-2 py-1 text-xs text-gray-200"
+            >{{ signature }}</code
+          >
+        </dd>
+      </div>
+      {% endif %}
+    </dl>
+
+    <footer>
+      <div class="button-group flex flex-col gap-3 sm:flex-row">
+        <button
+          type="button"
+          class="{{ button_primary }} sm:flex-1"
+          onclick="handleDownload(event, '{{ code }}')"
+        >
+          <i data-feather="download" class="h-4 w-4"></i>
+          Download file
+        </button>
+        <form
+          method="post"
+          action="/f/{{ code }}/link"
+          hx-post="/f/{{ code }}/link"
+          hx-target="#direct-link-output"
+          hx-swap="outerHTML"
+          hx-disabled-elt="button"
+          class="sm:flex-1"
+        >
+          {% if let Some(csrf) = layout.csrf %}
+          <input type="hidden" name="csrf_token" value="{{ csrf.token }}" />
+          {% endif %}
+          <button
+            type="submit"
+            class="{{ button_outline }} w-full justify-center"
+          >
+            <i data-feather="link" class="h-4 w-4"></i>
+            Generate link
+          </button>
+        </form>
+        {% if can_delete %}
+        <form
+          method="post"
+          action="/f/{{ code }}/delete"
+          class="sm:flex-1"
+          data-delete-form
+        >
+          {% if let Some(csrf) = layout.csrf %}
+          <input type="hidden" name="csrf_token" value="{{ csrf.token }}" />
+          {% endif %}
+          <button
+            type="submit"
+            class="{{ button_danger }} w-full justify-center"
+            data-delete-button
+          >
+            <i data-feather="trash-2" class="h-4 w-4"></i>
+            Delete file
+          </button>
+        </form>
+        {% endif %}
+      </div>
+    </footer>
+  </article>
+
+  <div
+    id="direct-link-output"
+    class="{{ card_subtle }}"
+    role="region"
+    aria-live="polite"
+  >
+    <p class="flex items-center justify-center gap-2 text-sm text-gray-300">
+      <i data-feather="info" class="h-5 w-5"></i>
+      Generate a direct link to download this file directly.
+    </p>
+  </div>
 </section>
-{% endblock %}
-
-{% block body_scripts %}
+{% endblock %} {% block body_scripts %}
 <script>
-    async function handleDownload(event, code) {
-        "use strict";
+  async function handleDownload(event, code) {
+    "use strict";
 
-        const button = event.currentTarget;
-        const originalContent = button.innerHTML;
-        const directLinkContainer = document.getElementById("direct-link-output");
+    const button = event.currentTarget;
+    const originalContent = button.innerHTML;
+    const directLinkContainer = document.getElementById("direct-link-output");
 
-        const activateIcons = () => {
-            if (typeof activateFeatherIcons === "function") {
-                activateFeatherIcons();
-            } else if (window.feather) {
-                window.feather.replace();
-            }
-        };
+    const activateIcons = () => {
+      if (typeof activateFeatherIcons === "function") {
+        activateFeatherIcons();
+      } else if (window.feather) {
+        window.feather.replace();
+      }
+    };
 
-        try {
-            button.disabled = true;
-            button.innerHTML = '<i data-feather="loader"></i> Generating...';
-            activateIcons();
+    try {
+      button.disabled = true;
+      button.innerHTML = '<i data-feather="loader"></i> Generating...';
+      activateIcons();
 
-            const siblingForm = button.closest(".button-group")?.querySelector("form");
-            const csrfTokenField = siblingForm?.querySelector('input[name="csrf_token"]');
-            const metaToken = document.querySelector('meta[name="csrf-token"]');
-            const csrfToken = csrfTokenField?.value || metaToken?.getAttribute("content") || "";
+      const siblingForm = button
+        .closest(".button-group")
+        ?.querySelector("form");
+      const csrfTokenField = siblingForm?.querySelector(
+        'input[name="csrf_token"]'
+      );
+      const metaToken = document.querySelector('meta[name="csrf-token"]');
+      const csrfToken =
+        csrfTokenField?.value || metaToken?.getAttribute("content") || "";
 
-            if (!csrfToken) {
-                throw new Error("Missing CSRF token");
-            }
+      if (!csrfToken) {
+        throw new Error("Missing CSRF token");
+      }
 
-            const payload = new URLSearchParams();
-            payload.set("csrf_token", csrfToken);
+      const payload = new URLSearchParams();
+      payload.set("csrf_token", csrfToken);
 
-            const response = await fetch(`/f/${code}/link`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
-                },
-                body: payload.toString()
-            });
+      const response = await fetch(`/f/${code}/link`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+        },
+        body: payload.toString(),
+      });
 
-            if (!response.ok) {
-                throw new Error(`Failed to generate download link (status ${response.status})`);
-            }
+      if (!response.ok) {
+        throw new Error(
+          `Failed to generate download link (status ${response.status})`
+        );
+      }
 
-            const html = (await response.text()).trim();
-            if (!html) {
-                throw new Error("Empty response while generating link");
-            }
+      const html = (await response.text()).trim();
+      if (!html) {
+        throw new Error("Empty response while generating link");
+      }
 
-            const template = document.createElement("template");
-            template.innerHTML = html;
-            const snippet = template.content.firstElementChild;
+      const template = document.createElement("template");
+      template.innerHTML = html;
+      const snippet = template.content.firstElementChild;
 
-            if (!snippet) {
-                throw new Error("Failed to parse download snippet");
-            }
+      if (!snippet) {
+        throw new Error("Failed to parse download snippet");
+      }
 
-            if (directLinkContainer) {
-                directLinkContainer.replaceWith(snippet);
-            }
+      if (directLinkContainer) {
+        directLinkContainer.replaceWith(snippet);
+      }
 
-            activateIcons();
+      activateIcons();
 
-            const linkInput = snippet.querySelector('input[type="text"]');
-            if (!linkInput || !linkInput.value) {
-                throw new Error("Download link missing in response");
-            }
+      const linkInput = snippet.querySelector('input[type="text"]');
+      if (!linkInput || !linkInput.value) {
+        throw new Error("Download link missing in response");
+      }
 
-            button.innerHTML = '<i data-feather="check"></i> Downloading...';
-            activateIcons();
-            window.location.href = linkInput.value;
+      button.innerHTML = '<i data-feather="check"></i> Downloading...';
+      activateIcons();
+      window.location.href = linkInput.value;
 
-            setTimeout(() => {
-                button.disabled = false;
-                button.innerHTML = originalContent;
-                activateIcons();
-            }, 2000);
-        } catch (error) {
-            console.error("Download error:", error);
-            button.innerHTML = '<i data-feather="alert-circle"></i> Error';
-            activateIcons();
+      setTimeout(() => {
+        button.disabled = false;
+        button.innerHTML = originalContent;
+        activateIcons();
+      }, 2000);
+    } catch (error) {
+      console.error("Download error:", error);
+      button.innerHTML = '<i data-feather="alert-circle"></i> Error';
+      activateIcons();
 
-            setTimeout(() => {
-                button.disabled = false;
-                button.innerHTML = originalContent;
-                activateIcons();
-            }, 2500);
+      setTimeout(() => {
+        button.disabled = false;
+        button.innerHTML = originalContent;
+        activateIcons();
+      }, 2500);
+    }
+  }
+
+  function attachDeleteHandlers() {
+    "use strict";
+
+    const activateIcons = () => {
+      if (typeof activateFeatherIcons === "function") {
+        activateFeatherIcons();
+      } else if (window.feather) {
+        window.feather.replace();
+      }
+    };
+
+    document.querySelectorAll("[data-delete-form]").forEach((form) => {
+      form.addEventListener("submit", (event) => {
+        const button = form.querySelector("[data-delete-button]");
+        const confirmed = window.confirm(
+          "This will permanently remove the shared file. Continue?"
+        );
+
+        if (!confirmed) {
+          event.preventDefault();
+          return;
         }
-    }
 
-    function attachDeleteHandlers() {
-        "use strict";
+        if (button) {
+          button.disabled = true;
+          button.innerHTML = '<i data-feather="loader"></i> Deleting...';
+          activateIcons();
+        }
+      });
+    });
+  }
 
-        const activateIcons = () => {
-            if (typeof activateFeatherIcons === "function") {
-                activateFeatherIcons();
-            } else if (window.feather) {
-                window.feather.replace();
-            }
-        };
-
-        document.querySelectorAll("[data-delete-form]").forEach((form) => {
-            form.addEventListener("submit", (event) => {
-                const button = form.querySelector("[data-delete-button]");
-                const confirmed = window.confirm(
-                    "This will permanently remove the shared file. Continue?"
-                );
-
-                if (!confirmed) {
-                    event.preventDefault();
-                    return;
-                }
-
-                if (button) {
-                    button.disabled = true;
-                    button.innerHTML = '<i data-feather="loader"></i> Deleting...';
-                    activateIcons();
-                }
-            });
-        });
-    }
-
-    document.addEventListener("DOMContentLoaded", attachDeleteHandlers);
+  document.addEventListener("DOMContentLoaded", attachDeleteHandlers);
 </script>
 {% endblock %}

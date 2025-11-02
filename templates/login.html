@@ -1,36 +1,63 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section aria-labelledby="login-heading" style="max-width: 500px; margin: 2rem auto;">
-    <article>
-        <header>
-            <h1 id="login-heading" style="text-align: left; margin-bottom: 0.5rem;">
-                Sign in
-            </h1>
+{% set card_base = "rounded-2xl border border-gray-800 bg-gray-900/70 p-6 shadow-xl shadow-gray-950/40 backdrop-blur" %}
+{% set button_primary = "inline-flex items-center justify-center gap-2 rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-gray-950 shadow-sm transition hover:bg-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300" %}
+{% set button_outline = "inline-flex items-center justify-center gap-2 rounded-lg border border-gray-700 px-4 py-2 text-sm font-semibold text-gray-200 transition hover:border-sky-400 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300" %}
+{% set input_class = "mt-2 w-full rounded-lg border border-gray-800 bg-gray-900/70 px-3 py-2 text-base text-gray-100 placeholder:text-gray-500 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40" %}
+
+<section aria-labelledby="login-heading" class="mx-auto w-full max-w-md space-y-6 py-10">
+    <article class="{{ card_base }} space-y-6">
+        <header class="space-y-2">
+            <h1 id="login-heading" class="text-2xl font-semibold text-white">Sign in</h1>
+            <p class="text-sm text-gray-400">Access your uploads and manage files.</p>
         </header>
+
         {% if let Some(message) = error_message %}
-        <div class="card error" role="alert">
-            <strong>Error:</strong> {{ message }}
+        <div class="rounded-2xl border border-rose-500/60 bg-rose-500/10 p-4 text-sm text-rose-100 shadow-lg shadow-rose-500/20" role="alert">
+            <strong class="font-semibold">Error:</strong> {{ message }}
         </div>
         {% endif %}
-        <form method="post" action="/login">
+
+        <form method="post" action="/login" class="space-y-5">
             {% if let Some(csrf) = layout.csrf %}
-            <input type="hidden" name="csrf_token" value="{{ csrf.token }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf.token }}" />
             {% endif %}
-            <label for="login-username">
+
+            <label for="login-username" class="flex flex-col text-sm font-medium text-gray-200">
                 Username
-                <input id="login-username" name="username" type="text" placeholder="you@example.com" autocomplete="username" value="{{ username }}" required>
+                <input
+                    id="login-username"
+                    name="username"
+                    type="text"
+                    placeholder="you@example.com"
+                    autocomplete="username"
+                    value="{{ username }}"
+                    required
+                    class="{{ input_class }}"
+                />
             </label>
-            <label for="login-password">
+
+            <label for="login-password" class="flex flex-col text-sm font-medium text-gray-200">
                 Password
-                <input id="login-password" name="password" type="password" autocomplete="current-password" required>
+                <input
+                    id="login-password"
+                    name="password"
+                    type="password"
+                    autocomplete="current-password"
+                    required
+                    class="{{ input_class }}"
+                />
             </label>
-            <div class="button-group" style="margin-top: 1.5rem;">
-                <button type="submit" class="icon-button" style="flex: 1;">
-                    <i data-feather="log-in"></i>
+
+            <div class="mt-6 flex flex-col gap-3 sm:flex-row">
+                <button type="submit" class="{{ button_primary }} sm:flex-1">
+                    <i data-feather="log-in" class="h-4 w-4"></i>
                     Sign in
                 </button>
-                <a role="button" class="secondary outline" href="/">Cancel</a>
+                <a href="/" role="button" class="{{ button_outline }} sm:flex-1">
+                    Cancel
+                </a>
             </div>
         </form>
     </article>

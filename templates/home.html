@@ -1,164 +1,81 @@
-{% extends "base.html" %} {% block head %}
-<style>
-  .home-wrap {
-    max-width: 640px;
-    margin: 0 auto;
-    padding: 1.5rem 0 2rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-  .home-title {
-    margin: 0 0 0.5rem 0;
-    font-weight: 700;
-    letter-spacing: 0.01em;
-  }
-  .tile {
-    padding: 1rem;
-  }
-  .tile h2 {
-    margin: 0 0 0.5rem 0;
-  }
-  .tile small {
-    color: var(--pico-muted-color);
-  }
-  .stack {
-    display: grid;
-    gap: 1rem;
-  }
-  .code-input {
-    width: 40px;
-    height: 48px !important;
-    font-size: 1.2rem;
-  }
-  @media (max-width: 480px) {
-    .code-input {
-      width: 36px;
-      height: 44px !important;
-      font-size: 1.1rem;
-    }
-  }
-</style>
-{% endblock %} {% block content %}
-<div class="home-wrap">
+{% extends "base.html" %}
+
+{% block content %}
+{% set card_base = "rounded-2xl border border-gray-800 bg-gray-900/70 p-6 shadow-xl shadow-gray-950/40 backdrop-blur" %}
+{% set card_success = "rounded-2xl border border-emerald-500/60 bg-emerald-500/10 p-4 text-emerald-100 shadow-lg shadow-emerald-500/20 backdrop-blur" %}
+{% set button_primary = "inline-flex items-center justify-center gap-2 rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-gray-950 shadow-sm transition hover:bg-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300" %}
+{% set button_outline = "inline-flex items-center justify-center gap-2 rounded-lg border border-gray-700 px-4 py-2 text-sm font-semibold text-gray-200 transition hover:border-sky-400 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300" %}
+{% set button_subtle = "inline-flex items-center justify-center gap-2 rounded-lg bg-gray-800 px-4 py-2 text-sm font-semibold text-gray-100 shadow-sm transition hover:bg-gray-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-300" %}
+
+<div class="mx-auto flex w-full max-w-3xl flex-col gap-8 py-10">
   {% if let Some(message) = flash_message %}
-  <article class="card success" role="status">
-    <p style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
-      <i data-feather="check-circle" style="width: 18px; height: 18px;"></i>
+  <article class="{{ card_success }}" role="status">
+    <p class="flex items-center gap-2 text-sm font-medium">
+      <i data-feather="check-circle" class="h-4 w-4"></i>
       {{ message }}
     </p>
   </article>
   {% endif %}
 
-  <article class="tile">
-    <h2>Upload files</h2>
-    <div class="stack">
+  <article class="{{ card_base }} space-y-4">
+    <div>
+      <h2 class="text-xl font-semibold text-white">Upload files</h2>
+      <p class="mt-1 text-sm text-gray-400">
+        Share files securely with a single code.
+      </p>
+    </div>
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
       {% if layout.current_user.is_some() %}
-      <a role="button" class="icon-button" href="/upload">
-        <i data-feather="upload"></i>
+      <a class="{{ button_primary }}" href="/upload">
+        <i data-feather="upload" class="h-4 w-4"></i>
         Upload a file
       </a>
-      <a role="button" class="icon-button secondary outline" href="/paste">
-        <i data-feather="edit-3"></i>
+      <a class="{{ button_outline }}" href="/paste">
+        <i data-feather="edit-3" class="h-4 w-4"></i>
         Create a paste
       </a>
       {% else %}
-      <small>Please log in to upload.</small>
-      <a role="button" class="icon-button" href="/login">
-        <i data-feather="log-in"></i>
+      <p class="text-sm text-gray-400">Please log in to upload.</p>
+      <a class="{{ button_primary }}" href="/login">
+        <i data-feather="log-in" class="h-4 w-4"></i>
         Log in
       </a>
       {% endif %}
     </div>
   </article>
 
-  <article class="tile">
-    <h2>Fetch files</h2>
-    <small>Enter a share code (e.g. <code>ABCD-EF12</code>)</small>
-    <form id="code-lookup-form" action="/f/" method="get" novalidate>
-      <div class="code-input-grid" role="group" aria-label="File code">
-        <div class="code-input-wrapper" data-index="0" data-filled="false">
+  <article class="{{ card_base }} space-y-6">
+    <div>
+      <h2 class="text-xl font-semibold text-white">Fetch files</h2>
+      <p class="mt-2 text-sm text-gray-400">
+        Enter a share code (e.g. <code class="rounded bg-gray-900/80 px-2 py-1 text-xs font-semibold text-gray-200">ABCD-EF12</code>)
+      </p>
+    </div>
+    <form
+      id="code-lookup-form"
+      action="/f/"
+      method="get"
+      novalidate
+      class="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left"
+    >
+      <div class="code-input-grid flex flex-wrap items-center justify-center gap-2 sm:gap-3" role="group" aria-label="File code">
+        {% for index in 0..8 %}
+        {% if index == 4 %}
+        <span class="code-input-separator flex h-12 items-center justify-center px-1 text-2xl font-semibold text-gray-600 sm:h-14" aria-hidden="true">-</span>
+        {% endif %}
+        <div class="code-input-wrapper relative group" data-index="{{ index }}" data-filled="false">
           <input
-            class="code-input"
+            class="code-input h-12 w-10 rounded-xl border border-gray-800 bg-gray-900/80 text-center text-lg font-semibold uppercase tracking-[0.35em] text-white transition focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40 group-data-[filled=true]:border-sky-400/70 sm:h-14 sm:w-12 sm:text-xl"
             type="text"
             inputmode="text"
             autocomplete="one-time-code"
             autocapitalize="characters"
             maxlength="1"
-            aria-label="Code character 1"
+            aria-label="Code character {{ index + 1 }}"
+            style="letter-spacing: 0.05rem;"
           />
         </div>
-        <div class="code-input-wrapper" data-index="1" data-filled="false">
-          <input
-            class="code-input"
-            type="text"
-            inputmode="text"
-            autocapitalize="characters"
-            maxlength="1"
-            aria-label="Code character 2"
-          />
-        </div>
-        <div class="code-input-wrapper" data-index="2" data-filled="false">
-          <input
-            class="code-input"
-            type="text"
-            inputmode="text"
-            autocapitalize="characters"
-            maxlength="1"
-            aria-label="Code character 3"
-          />
-        </div>
-        <div class="code-input-wrapper" data-index="3" data-filled="false">
-          <input
-            class="code-input"
-            type="text"
-            inputmode="text"
-            autocapitalize="characters"
-            maxlength="1"
-            aria-label="Code character 4"
-          />
-        </div>
-        <span class="code-input-separator" aria-hidden="true">-</span>
-        <div class="code-input-wrapper" data-index="4" data-filled="false">
-          <input
-            class="code-input"
-            type="text"
-            inputmode="text"
-            autocapitalize="characters"
-            maxlength="1"
-            aria-label="Code character 5"
-          />
-        </div>
-        <div class="code-input-wrapper" data-index="5" data-filled="false">
-          <input
-            class="code-input"
-            type="text"
-            inputmode="text"
-            autocapitalize="characters"
-            maxlength="1"
-            aria-label="Code character 6"
-          />
-        </div>
-        <div class="code-input-wrapper" data-index="6" data-filled="false">
-          <input
-            class="code-input"
-            type="text"
-            inputmode="text"
-            autocapitalize="characters"
-            maxlength="1"
-            aria-label="Code character 7"
-          />
-        </div>
-        <div class="code-input-wrapper" data-index="7" data-filled="false">
-          <input
-            class="code-input"
-            type="text"
-            inputmode="text"
-            autocapitalize="characters"
-            maxlength="1"
-            aria-label="Code character 8"
-          />
-        </div>
+        {% endfor %}
       </div>
       <input
         type="hidden"
@@ -167,71 +84,52 @@
         pattern="^[A-Za-z0-9]{4}-[A-Za-z0-9]{4}$"
         required
       />
-      <button type="submit" class="icon-button">
-        <i data-feather="arrow-right"></i>
+      <button type="submit" class="{{ button_primary }}">
+        <i data-feather="arrow-right" class="h-4 w-4"></i>
         Fetch file
       </button>
-      <small>Paste the code or type one character per box.</small>
+      <p class="text-sm text-gray-400">Paste the code or type one character per box.</p>
     </form>
   </article>
 </div>
 
 {% if layout.current_user.is_some() %}
-<section>
-  <hgroup>
-    <h2>
-      <i
-        data-feather="clock"
-        style="
-          width: 24px;
-          height: 24px;
-          vertical-align: middle;
-          margin-right: 0.5rem;
-        "
-      ></i
-      >Recent uploads
+<section class="mx-auto mt-12 w-full max-w-6xl space-y-6">
+  <div>
+    <h2 class="flex items-center gap-3 text-xl font-semibold text-white">
+      <i data-feather="clock" class="h-6 w-6 text-gray-400"></i>
+      Recent uploads
     </h2>
-  </hgroup>
+  </div>
   {% if recent_uploads.is_empty() %}
-  <article>
-    <p
-      style="text-align: center; color: var(--pico-muted-color); padding: 2rem"
-    >
-      No uploads yet. <a href="/upload">Upload your first file</a> to get
-      started.
-    </p>
+  <article class="{{ card_base }} text-center text-sm text-gray-400">
+    No uploads yet. <a href="/upload" class="text-sky-400 transition hover:text-sky-300">Upload your first file</a> to get started.
   </article>
   {% else %}
-  <div class="table-wrapper">
-    <table role="grid">
-      <thead>
+  <div class="overflow-hidden rounded-2xl border border-gray-800 bg-gray-900/60 shadow-xl shadow-gray-950/40">
+    <table role="grid" class="min-w-full divide-y divide-gray-800 text-left text-sm text-gray-200">
+      <thead class="bg-gray-900/80 text-xs font-semibold uppercase tracking-wide text-gray-400">
         <tr>
-          <th scope="col">File name</th>
-          <th scope="col">Code</th>
-          <th scope="col">Size</th>
-          <th scope="col">Uploaded</th>
+          <th scope="col" class="px-4 py-3">File name</th>
+          <th scope="col" class="px-4 py-3">Code</th>
+          <th scope="col" class="px-4 py-3">Size</th>
+          <th scope="col" class="px-4 py-3">Uploaded</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody class="divide-y divide-gray-800">
         {% for upload in recent_uploads %}
-        <tr>
-          <td>
-            <a href="/f/{{ upload.code }}" style="font-weight: 500">
-              <i
-                data-feather="file"
-                style="
-                  width: 16px;
-                  height: 16px;
-                  vertical-align: middle;
-                  margin-right: 0.5rem;
-                "
-              ></i>
+        <tr class="hover:bg-gray-900/70">
+          <td class="px-4 py-3">
+            <a href="/f/{{ upload.code }}" class="inline-flex items-center gap-2 font-medium text-white transition hover:text-sky-300">
+              <i data-feather="file" class="h-4 w-4 text-gray-400"></i>
               {{ upload.original_name }}
             </a>
           </td>
-          <td><code style="font-size: 0.875rem">{{ upload.code }}</code></td>
-          <td>{{ upload.size_display }}</td>
-          <td><time>{{ upload.created_display }}</time></td>
+          <td class="px-4 py-3">
+            <code class="rounded bg-gray-900/80 px-2 py-1 text-xs font-semibold text-gray-200">{{ upload.code }}</code>
+          </td>
+          <td class="px-4 py-3">{{ upload.size_display }}</td>
+          <td class="px-4 py-3"><time class="text-gray-400">{{ upload.created_display }}</time></td>
         </tr>
         {% endfor %}
       </tbody>
@@ -239,7 +137,10 @@
   </div>
   {% endif %}
 </section>
-{% endif %} {% endblock %} {% block body_scripts %}
+{% endif %}
+{% endblock %}
+
+{% block body_scripts %}
 <script>
   (() => {
     "use strict";
