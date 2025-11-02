@@ -1,260 +1,382 @@
-{% extends "base.html" %}
-
-{% block content %}
-<section style="text-align: center; padding: 3rem 0;">
-    <hgroup>
-        <h1 style="font-size: 2.5rem; margin-bottom: 1rem;">{{ layout.brand_name }}</h1>
-        <p style="font-size: 1.25rem; color: var(--pico-muted-color);">Secure file sharing, streamlined for teams.</p>
-    </hgroup>
-    <div class="button-group" style="justify-content: center; margin-top: 2rem;">
-        {% if layout.current_user.is_some() %}
-        <a role="button" href="/upload" class="icon-button">
-            <i data-feather="upload"></i>
-            Upload a file
-        </a>
-        {% else %}
-        <a role="button" href="/login" class="icon-button">
-            <i data-feather="log-in"></i>
-            Log in
-        </a>
-        {% endif %}
+{% extends "base.html" %} {% block head %}
+<style>
+  .home-wrap {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 1.5rem 0 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .home-title {
+    margin: 0 0 0.5rem 0;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+  .tile {
+    padding: 1rem;
+  }
+  .tile h2 {
+    margin: 0 0 0.5rem 0;
+  }
+  .tile small {
+    color: var(--pico-muted-color);
+  }
+  .stack {
+    display: grid;
+    gap: 1rem;
+  }
+  .code-input {
+    width: 40px;
+    height: 48px !important;
+    font-size: 1.2rem;
+  }
+  @media (max-width: 480px) {
+    .code-input {
+      width: 36px;
+      height: 44px !important;
+      font-size: 1.1rem;
+    }
+  }
+</style>
+{% endblock %} {% block content %}
+<div class="home-wrap">
+  <article class="tile">
+    <h2>Upload files</h2>
+    <div class="stack">
+      {% if layout.current_user.is_some() %}
+      <a role="button" class="icon-button" href="/upload">
+        <i data-feather="upload"></i>
+        Upload a file
+      </a>
+      {% else %}
+      <small>Please log in to upload.</small>
+      <a role="button" class="icon-button" href="/login">
+        <i data-feather="log-in"></i>
+        Log in
+      </a>
+      {% endif %}
     </div>
-</section>
+  </article>
 
-<section>
-    <div class="lookup-box">
-        <article style="text-align: center;">
-            <h2 style="margin-bottom: 1rem;">
-                <i data-feather="search" style="width: 24px; height: 24px; vertical-align: middle; margin-right: 0.5rem;"></i>
-                Lookup File
-            </h2>
-            <p style="color: var(--pico-muted-color); margin-bottom: 1.5rem;">Enter a share code (e.g. <code>ABCD-EF12</code>)</p>
-            <form id="code-lookup-form" action="/f/" method="get" novalidate>
-                <noscript>
-                    <p style="color: var(--pico-del-color);">Enable JavaScript to use the quick lookup, or navigate to <code>/f/ABCD-EF12</code> manually.</p>
-                </noscript>
-                <div class="code-input-grid" role="group" aria-label="File code">
-                    <div class="code-input-wrapper" data-index="0" data-filled="false">
-                        <input class="code-input" type="text" inputmode="text" autocomplete="one-time-code" autocapitalize="characters" maxlength="1" aria-label="Code character 1" />
-                    </div>
-                    <div class="code-input-wrapper" data-index="1" data-filled="false">
-                        <input class="code-input" type="text" inputmode="text" autocapitalize="characters" maxlength="1" aria-label="Code character 2" />
-                    </div>
-                    <div class="code-input-wrapper" data-index="2" data-filled="false">
-                        <input class="code-input" type="text" inputmode="text" autocapitalize="characters" maxlength="1" aria-label="Code character 3" />
-                    </div>
-                    <div class="code-input-wrapper" data-index="3" data-filled="false">
-                        <input class="code-input" type="text" inputmode="text" autocapitalize="characters" maxlength="1" aria-label="Code character 4" />
-                    </div>
-                    <span class="code-input-separator" aria-hidden="true">-</span>
-                    <div class="code-input-wrapper" data-index="4" data-filled="false">
-                        <input class="code-input" type="text" inputmode="text" autocapitalize="characters" maxlength="1" aria-label="Code character 5" />
-                    </div>
-                    <div class="code-input-wrapper" data-index="5" data-filled="false">
-                        <input class="code-input" type="text" inputmode="text" autocapitalize="characters" maxlength="1" aria-label="Code character 6" />
-                    </div>
-                    <div class="code-input-wrapper" data-index="6" data-filled="false">
-                        <input class="code-input" type="text" inputmode="text" autocapitalize="characters" maxlength="1" aria-label="Code character 7" />
-                    </div>
-                    <div class="code-input-wrapper" data-index="7" data-filled="false">
-                        <input class="code-input" type="text" inputmode="text" autocapitalize="characters" maxlength="1" aria-label="Code character 8" />
-                    </div>
-                </div>
-                <input type="hidden" name="code" id="code-lookup-hidden" pattern="^[A-Za-z0-9]{4}-[A-Za-z0-9]{4}$" required>
-                <button type="submit" class="icon-button" style="width: 100%;">
-                    <i data-feather="arrow-right"></i>
-                    View File
-                </button>
-                <small style="color: var(--pico-muted-color);">Paste the entire code or type one character per box.</small>
-            </form>
-        </article>
-    </div>
-</section>
+  <article class="tile">
+    <h2>Fetch files</h2>
+    <small>Enter a share code (e.g. <code>ABCD-EF12</code>)</small>
+    <form id="code-lookup-form" action="/f/" method="get" novalidate>
+      <div class="code-input-grid" role="group" aria-label="File code">
+        <div class="code-input-wrapper" data-index="0" data-filled="false">
+          <input
+            class="code-input"
+            type="text"
+            inputmode="text"
+            autocomplete="one-time-code"
+            autocapitalize="characters"
+            maxlength="1"
+            aria-label="Code character 1"
+          />
+        </div>
+        <div class="code-input-wrapper" data-index="1" data-filled="false">
+          <input
+            class="code-input"
+            type="text"
+            inputmode="text"
+            autocapitalize="characters"
+            maxlength="1"
+            aria-label="Code character 2"
+          />
+        </div>
+        <div class="code-input-wrapper" data-index="2" data-filled="false">
+          <input
+            class="code-input"
+            type="text"
+            inputmode="text"
+            autocapitalize="characters"
+            maxlength="1"
+            aria-label="Code character 3"
+          />
+        </div>
+        <div class="code-input-wrapper" data-index="3" data-filled="false">
+          <input
+            class="code-input"
+            type="text"
+            inputmode="text"
+            autocapitalize="characters"
+            maxlength="1"
+            aria-label="Code character 4"
+          />
+        </div>
+        <span class="code-input-separator" aria-hidden="true">-</span>
+        <div class="code-input-wrapper" data-index="4" data-filled="false">
+          <input
+            class="code-input"
+            type="text"
+            inputmode="text"
+            autocapitalize="characters"
+            maxlength="1"
+            aria-label="Code character 5"
+          />
+        </div>
+        <div class="code-input-wrapper" data-index="5" data-filled="false">
+          <input
+            class="code-input"
+            type="text"
+            inputmode="text"
+            autocapitalize="characters"
+            maxlength="1"
+            aria-label="Code character 6"
+          />
+        </div>
+        <div class="code-input-wrapper" data-index="6" data-filled="false">
+          <input
+            class="code-input"
+            type="text"
+            inputmode="text"
+            autocapitalize="characters"
+            maxlength="1"
+            aria-label="Code character 7"
+          />
+        </div>
+        <div class="code-input-wrapper" data-index="7" data-filled="false">
+          <input
+            class="code-input"
+            type="text"
+            inputmode="text"
+            autocapitalize="characters"
+            maxlength="1"
+            aria-label="Code character 8"
+          />
+        </div>
+      </div>
+      <input
+        type="hidden"
+        name="code"
+        id="code-lookup-hidden"
+        pattern="^[A-Za-z0-9]{4}-[A-Za-z0-9]{4}$"
+        required
+      />
+      <button type="submit" class="icon-button">
+        <i data-feather="arrow-right"></i>
+        Fetch file
+      </button>
+      <small>Paste the code or type one character per box.</small>
+    </form>
+  </article>
+</div>
 
 {% if layout.current_user.is_some() %}
 <section>
-    <hgroup>
-        <h2><i data-feather="clock" style="width: 24px; height: 24px; vertical-align: middle; margin-right: 0.5rem;"></i>Recent uploads</h2>
-    </hgroup>
-    {% if recent_uploads.is_empty() %}
-    <article>
-        <p style="text-align: center; color: var(--pico-muted-color); padding: 2rem;">
-            No uploads yet. <a href="/upload">Upload your first file</a> to get started.
-        </p>
-    </article>
-    {% else %}
-    <div class="table-wrapper">
-        <table role="grid">
-            <thead>
-                <tr>
-                    <th scope="col">File name</th>
-                    <th scope="col">Code</th>
-                    <th scope="col">Size</th>
-                    <th scope="col">Uploaded</th>
-                </tr>
-            </thead>
-            <tbody>
-            {% for upload in recent_uploads %}
-                <tr>
-                    <td>
-                        <a href="/f/{{ upload.code }}" style="font-weight: 500;">
-                            <i data-feather="file" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 0.5rem;"></i>
-                            {{ upload.original_name }}
-                        </a>
-                    </td>
-                    <td><code style="font-size: 0.875rem;">{{ upload.code }}</code></td>
-                    <td>{{ upload.size_display }}</td>
-                    <td><time>{{ upload.created_display }}</time></td>
-                </tr>
-            {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% endif %}
+  <hgroup>
+    <h2>
+      <i
+        data-feather="clock"
+        style="
+          width: 24px;
+          height: 24px;
+          vertical-align: middle;
+          margin-right: 0.5rem;
+        "
+      ></i
+      >Recent uploads
+    </h2>
+  </hgroup>
+  {% if recent_uploads.is_empty() %}
+  <article>
+    <p
+      style="text-align: center; color: var(--pico-muted-color); padding: 2rem"
+    >
+      No uploads yet. <a href="/upload">Upload your first file</a> to get
+      started.
+    </p>
+  </article>
+  {% else %}
+  <div class="table-wrapper">
+    <table role="grid">
+      <thead>
+        <tr>
+          <th scope="col">File name</th>
+          <th scope="col">Code</th>
+          <th scope="col">Size</th>
+          <th scope="col">Uploaded</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for upload in recent_uploads %}
+        <tr>
+          <td>
+            <a href="/f/{{ upload.code }}" style="font-weight: 500">
+              <i
+                data-feather="file"
+                style="
+                  width: 16px;
+                  height: 16px;
+                  vertical-align: middle;
+                  margin-right: 0.5rem;
+                "
+              ></i>
+              {{ upload.original_name }}
+            </a>
+          </td>
+          <td><code style="font-size: 0.875rem">{{ upload.code }}</code></td>
+          <td>{{ upload.size_display }}</td>
+          <td><time>{{ upload.created_display }}</time></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
 </section>
-{% endif %}
-{% endblock %}
-
-{% block body_scripts %}
+{% endif %} {% endblock %} {% block body_scripts %}
 <script>
-    (() => {
-        "use strict";
+  (() => {
+    "use strict";
 
-        const form = document.getElementById("code-lookup-form");
-        if (!form) {
-            return;
+    const form = document.getElementById("code-lookup-form");
+    if (!form) {
+      return;
+    }
+
+    const inputs = Array.from(form.querySelectorAll(".code-input"));
+    const hiddenField = document.getElementById("code-lookup-hidden");
+    const hyphenIndex = 4;
+
+    const sanitize = (value) =>
+      value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+
+    const updateHiddenValue = () => {
+      const raw = inputs.map((input) => input.value).join("");
+      if (raw.length === inputs.length) {
+        hiddenField.value = `${raw.slice(0, hyphenIndex)}-${raw.slice(
+          hyphenIndex
+        )}`;
+      } else {
+        hiddenField.value = "";
+      }
+    };
+
+    const focusInput = (index) => {
+      const target = inputs[index];
+      if (target) {
+        target.focus();
+        target.select();
+      }
+    };
+
+    const markWrapperState = (input) => {
+      if (input && input.parentElement?.classList) {
+        input.parentElement.dataset.filled = input.value ? "true" : "false";
+      }
+    };
+
+    const fillFrom = (startIndex, characters) => {
+      let index = startIndex;
+      characters.forEach((char) => {
+        if (index >= inputs.length) {
+          return;
+        }
+        const sanitizedChar = sanitize(char).slice(0, 1);
+        if (!sanitizedChar) {
+          return;
+        }
+        inputs[index].value = sanitizedChar;
+        inputs[index].setCustomValidity("");
+        markWrapperState(inputs[index]);
+        index += 1;
+      });
+      updateHiddenValue();
+      if (index < inputs.length) {
+        focusInput(index);
+      } else {
+        focusInput(inputs.length - 1);
+      }
+    };
+
+    inputs.forEach((input) => markWrapperState(input));
+
+    inputs.forEach((input, index) => {
+      input.addEventListener("focus", () => input.select());
+
+      input.addEventListener("input", (event) => {
+        const value = sanitize(event.target.value);
+
+        if (value.length > 1) {
+          fillFrom(index, value.split(""));
+          return;
         }
 
-        const inputs = Array.from(form.querySelectorAll(".code-input"));
-        const hiddenField = document.getElementById("code-lookup-hidden");
-        const hyphenIndex = 4;
+        event.target.value = value;
+        event.target.setCustomValidity("");
+        markWrapperState(event.target);
 
-        const sanitize = (value) => value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+        if (value && index < inputs.length - 1) {
+          focusInput(index + 1);
+        }
 
-        const updateHiddenValue = () => {
-            const raw = inputs.map((input) => input.value).join("");
-            if (raw.length === inputs.length) {
-                hiddenField.value = `${raw.slice(0, hyphenIndex)}-${raw.slice(hyphenIndex)}`;
-            } else {
-                hiddenField.value = "";
-            }
-        };
+        updateHiddenValue();
+      });
 
-        const focusInput = (index) => {
-            const target = inputs[index];
-            if (target) {
-                target.focus();
-                target.select();
-            }
-        };
+      input.addEventListener("keydown", (event) => {
+        if (event.key === "Backspace" && !input.value && index > 0) {
+          event.preventDefault();
+          focusInput(index - 1);
+          return;
+        }
 
-        const markWrapperState = (input) => {
-            if (input && input.parentElement?.classList) {
-                input.parentElement.dataset.filled = input.value ? "true" : "false";
-            }
-        };
+        if (
+          event.key === "ArrowLeft" &&
+          index > 0 &&
+          input.selectionStart === 0
+        ) {
+          event.preventDefault();
+          focusInput(index - 1);
+          return;
+        }
 
-        const fillFrom = (startIndex, characters) => {
-            let index = startIndex;
-            characters.forEach((char) => {
-                if (index >= inputs.length) {
-                    return;
-                }
-                const sanitizedChar = sanitize(char).slice(0, 1);
-                if (!sanitizedChar) {
-                    return;
-                }
-                inputs[index].value = sanitizedChar;
-                inputs[index].setCustomValidity("");
-                markWrapperState(inputs[index]);
-                index += 1;
-            });
-            updateHiddenValue();
-            if (index < inputs.length) {
-                focusInput(index);
-            } else {
-                focusInput(inputs.length - 1);
-            }
-        };
+        if (
+          event.key === "ArrowRight" &&
+          index < inputs.length - 1 &&
+          input.selectionStart === input.value.length
+        ) {
+          event.preventDefault();
+          focusInput(index + 1);
+        }
+      });
 
-        inputs.forEach((input) => markWrapperState(input));
+      input.addEventListener("paste", (event) => {
+        const clipboardData = event.clipboardData || window.clipboardData;
+        if (!clipboardData) {
+          return;
+        }
+        event.preventDefault();
+        const text = sanitize(clipboardData.getData("text"));
+        if (!text) {
+          return;
+        }
+        fillFrom(index, text.split(""));
+      });
+    });
 
-        inputs.forEach((input, index) => {
-            input.addEventListener("focus", () => input.select());
+    form.addEventListener("submit", (event) => {
+      updateHiddenValue();
 
-            input.addEventListener("input", (event) => {
-                const value = sanitize(event.target.value);
+      if (!hiddenField.value) {
+        event.preventDefault();
+        const firstEmpty = inputs.find((input) => !input.value);
+        if (firstEmpty) {
+          firstEmpty.setCustomValidity("Enter the remaining characters.");
+          firstEmpty.reportValidity();
+          focusInput(inputs.indexOf(firstEmpty));
+        }
+        return;
+      }
 
-                if (value.length > 1) {
-                    fillFrom(index, value.split(""));
-                    return;
-                }
+      inputs.forEach((input) => input.setCustomValidity(""));
+      event.preventDefault();
+      const targetCode = hiddenField.value;
+      window.location.href = `/f/${encodeURIComponent(targetCode)}`;
+    });
 
-                event.target.value = value;
-                event.target.setCustomValidity("");
-                markWrapperState(event.target);
-
-                if (value && index < inputs.length - 1) {
-                    focusInput(index + 1);
-                }
-
-                updateHiddenValue();
-            });
-
-            input.addEventListener("keydown", (event) => {
-                if (event.key === "Backspace" && !input.value && index > 0) {
-                    event.preventDefault();
-                    focusInput(index - 1);
-                    return;
-                }
-
-                if (event.key === "ArrowLeft" && index > 0 && input.selectionStart === 0) {
-                    event.preventDefault();
-                    focusInput(index - 1);
-                    return;
-                }
-
-                if (event.key === "ArrowRight" && index < inputs.length - 1 && input.selectionStart === input.value.length) {
-                    event.preventDefault();
-                    focusInput(index + 1);
-                }
-            });
-
-            input.addEventListener("paste", (event) => {
-                const clipboardData = event.clipboardData || window.clipboardData;
-                if (!clipboardData) {
-                    return;
-                }
-                event.preventDefault();
-                const text = sanitize(clipboardData.getData("text"));
-                if (!text) {
-                    return;
-                }
-                fillFrom(index, text.split(""));
-            });
-        });
-
-        form.addEventListener("submit", (event) => {
-            updateHiddenValue();
-
-            if (!hiddenField.value) {
-                event.preventDefault();
-                const firstEmpty = inputs.find((input) => !input.value);
-                if (firstEmpty) {
-                    firstEmpty.setCustomValidity("Enter the remaining characters.");
-                    firstEmpty.reportValidity();
-                    focusInput(inputs.indexOf(firstEmpty));
-                }
-                return;
-            }
-
-            inputs.forEach((input) => input.setCustomValidity(""));
-            event.preventDefault();
-            const targetCode = hiddenField.value;
-            window.location.href = `/f/${encodeURIComponent(targetCode)}`;
-        });
-
-                updateHiddenValue();
-    })();
+    updateHiddenValue();
+  })();
 </script>
 {% endblock %}
