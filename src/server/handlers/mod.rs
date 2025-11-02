@@ -1,0 +1,9 @@
+pub mod admin;
+pub mod auth;
+pub mod downloads;
+pub mod files;
+pub mod home;
+pub mod paste;
+pub mod settings;
+pub mod shared;
+pub mod uploads;
