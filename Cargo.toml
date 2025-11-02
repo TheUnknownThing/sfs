@@ -17,7 +17,7 @@ tower-sessions-sqlx-store = { version = "0.11", features = ["sqlite"] }
 tokio = { version = "1.35", features = ["full"] }
 
 # Database
-sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "macros", "sqlite"] }
+sqlx = { version = "0.7.4", features = ["runtime-tokio-rustls", "macros", "sqlite"] }
 
 # Templates
 askama = { version = "0.12", features = ["with-axum"] }

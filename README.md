@@ -13,30 +13,34 @@ Welcome! This repository contains a Rust-based file sharing server with a clean 
 
 ## Quick Start (Local Development)
 
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/your-username/simple_file_server.git
-    cd simple_file_server
-    ```
+1.  **Clone the repository.**
 
 2.  **Set up configuration:**
-    Copy the example `.env` file:
+    Copy the example `.env` file. You must generate secure random keys for `SESSION_KEY` and `DOWNLOAD_TOKEN_SECRET`.
     ```bash
     cp .env.example .env
-    ```
-    You must generate secure random keys for `SESSION_KEY` and `DOWNLOAD_TOKEN_SECRET`. You can use `openssl` to do this:
-    ```bash
-    # Generate SESSION_KEY
+    # Generate secrets
     echo "SESSION_KEY=base64:$(openssl rand -base64 32)" >> .env
-    # Generate DOWNLOAD_TOKEN_SECRET
     echo "DOWNLOAD_TOKEN_SECRET=base64:$(openssl rand -base64 32)" >> .env
     ```
 
-3.  **Run the application:**
+3. **Initialize the database:**
+    You can use the provided script or manually create the database.
+    ```bash
+    mkdir -p data
+    sqlite3 data/app.db < sql/schema.sql
+    ```
+
+4. **Modify the env accordingly**
+   Update the `DATABASE_URL` in your `.env` file to point to the new database location:
+   ```bash
+   DATABASE_URL=sqlite:data/app.db?mode=rwc&cache=shared&busy_timeout=5000
+   ```
+
+5.  **Run the application:**
     ```bash
     cargo run
     ```
-    The server will be running at `http://127.0.0.1:8080`.
 
 ## Deployment (Production)
 
@@ -69,5 +73,3 @@ Welcome! This repository contains a Rust-based file sharing server with a clean 
     ```bash
     ./simple_file_server
     ```
-    It is recommended to run the application as a systemd service or using another process manager to ensure it restarts automatically.
-

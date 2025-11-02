@@ -2,6 +2,7 @@ target/
 data/
 .env
 *.db
+.sqlx
 test.db-shm
 test.db-wal
 storage/
