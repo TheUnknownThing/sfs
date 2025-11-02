@@ -4,108 +4,58 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>
-      {% block title %}{{ layout.title }} - {{ layout.brand_name }}{% endblock %}
+      {% block title %}{{ layout.title }} - {{ layout.brand_name }}{% endblock
+      %}
     </title>
     <meta name="color-scheme" content="dark" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap"
-      rel="stylesheet"
-    />
-        <script>
-          window.tailwind = window.tailwind || {};
-          window.tailwind.config = {
-            darkMode: "class",
-            theme: {
-              extend: {
-                fontFamily: {
-                  sans: [
-                    "Inter",
-                    "Inter var",
-                    "-apple-system",
-                    "BlinkMacSystemFont",
-                    "'Segoe UI'",
-                    "system-ui",
-                    "sans-serif"
-                  ],
-                  mono: [
-                    "Fira Code",
-                    "SFMono-Regular",
-                    "Menlo",
-                    "Monaco",
-                    "Consolas",
-                    "'Liberation Mono'",
-                    "'Courier New'",
-                    "monospace"
-                  ]
-                },
-                colors: {
-                  brand: {
-                    400: "#38bdf8",
-                    500: "#0ea5e9"
-                  }
-                },
-                backdropBlur: {
-                  xs: "2px"
-                },
-                boxShadow: {
-                  card: "0 25px 50px -25px rgba(15, 23, 42, 0.65)",
-                  glow: "0 10px 35px -10px rgba(14, 165, 233, 0.35)"
-                }
-              }
-            },
-            safelist: [
-              "data-[copy-state=copied]:after:absolute",
-              "data-[copy-state=copied]:after:-top-10",
-              "data-[copy-state=copied]:after:left-1/2",
-              "data-[copy-state=copied]:after:-translate-x-1/2",
-              "data-[copy-state=copied]:after:rounded-full",
-              "data-[copy-state=copied]:after:bg-emerald-400",
-              "data-[copy-state=copied]:after:px-3",
-              "data-[copy-state=copied]:after:py-1",
-              "data-[copy-state=copied]:after:text-xs",
-              "data-[copy-state=copied]:after:font-semibold",
-              "data-[copy-state=copied]:after:text-slate-950",
-              "data-[copy-state=copied]:after:shadow-lg",
-              "data-[copy-state=copied]:after:content-['Copied!']",
-              "data-[copy-state=copied]:after:opacity-100",
-              "data-[copy-state=copied]:after:transition",
-              "data-[copy-state=copied]:after:duration-300",
-              "data-[copy-state=copied]:after:ease-out",
-              "data-[copy-state=copied]:after:whitespace-nowrap"
-            ]
-          };
-        </script>
-        <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
-        <script
-          src="https://unpkg.com/htmx.org@1.9.12"
-          integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2"
-          crossorigin="anonymous"
-          defer
-        ></script>
-        <script
-          src="https://unpkg.com/feather-icons@4.29.0/dist/feather.min.js"
-          integrity="sha384-RyE9TSx1shZZA6GS7TToIk1J7zY1mU8evbLDXYgOz4zgduwPFEtnHd1bswt8PG/u"
-          crossorigin="anonymous"
-          defer
-        ></script>
-        {% if let Some(csrf) = layout.csrf %}
-        <meta name="csrf-token" content="{{ csrf.token }}" />
-        {% endif %}
-        {% block head %}{% endblock %}
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+    <script
+      src="https://unpkg.com/htmx.org@1.9.12"
+      integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2"
+      crossorigin="anonymous"
+      defer
+    ></script>
+    <script
+      src="https://unpkg.com/feather-icons@4.29.0/dist/feather.min.js"
+      integrity="sha384-RyE9TSx1shZZA6GS7TToIk1J7zY1mU8evbLDXYgOz4zgduwPFEtnHd1bswt8PG/u"
+      crossorigin="anonymous"
+      defer
+    ></script>
+    {% if let Some(csrf) = layout.csrf %}
+    <meta name="csrf-token" content="{{ csrf.token }}" />
+    {% endif %} {% block head %}{% endblock %}
   </head>
-  <body class="h-full bg-slate-950 font-sans text-slate-200 antialiased">
-    {% set nav_link = "inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-300 transition hover:bg-slate-900/60 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500/40" %}
-    {% set nav_button = "inline-flex items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2 text-sm font-semibold text-slate-100 transition hover:border-sky-500/60 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-400" %}
-    {% set nav_primary = "inline-flex items-center justify-center gap-2 rounded-lg bg-sky-500 px-3 py-2 text-sm font-semibold text-slate-950 shadow-sm transition hover:bg-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-200" %}
-    {% set user_badge = "inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-900/80 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-300" %}
+  <body class="h-full bg-gray-950 font-sans text-gray-200 antialiased">
+    {% set nav_link = "inline-flex items-center gap-2 rounded-lg px-3 py-2
+    text-sm font-medium text-gray-300 transition hover:bg-gray-900/60
+    hover:text-white focus-visible:outline focus-visible:outline-2
+    focus-visible:outline-offset-2 focus-visible:outline-sky-500/40" %} {% set
+    nav_button = "inline-flex items-center justify-center gap-2 rounded-lg
+    border border-gray-800 bg-gray-900/60 px-3 py-2 text-sm font-semibold
+    text-gray-100 transition hover:border-sky-500/60 hover:text-white
+    focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
+    focus-visible:outline-sky-400" %} {% set nav_primary = "inline-flex
+    items-center justify-center gap-2 rounded-lg bg-sky-500 px-3 py-2 text-sm
+    font-semibold text-gray-950 shadow-sm transition hover:bg-sky-400
+    focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
+    focus-visible:outline-sky-200" %} {% set user_badge = "inline-flex
+    items-center gap-2 rounded-full border border-gray-800 bg-gray-900/80 px-3
+    py-1 text-xs font-semibold uppercase tracking-wide text-gray-300" %}
 
     <div class="flex min-h-screen flex-col">
-      <header class="sticky top-0 z-30 border-b border-slate-800 bg-slate-950/90 backdrop-blur">
-        <nav class="mx-auto flex w-full max-w-6xl flex-col gap-4 px-6 py-5 md:flex-row md:items-center md:justify-between">
-          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-            <a href="/" class="flex items-center gap-2 text-xl font-semibold text-white transition hover:text-sky-300">
+      <header
+        class="sticky top-0 z-30 border-b border-gray-800 bg-gray-950/90 backdrop-blur"
+      >
+        <nav
+          class="mx-auto flex w-full max-w-6xl flex-col gap-4 px-6 py-5 md:flex-row md:items-center md:justify-between"
+        >
+          <div
+            class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6"
+          >
+            <a
+              href="/"
+              class="flex items-center gap-2 text-xl font-semibold text-white transition hover:text-sky-300"
+            >
               {{ layout.brand_name }}
             </a>
             <div class="flex flex-wrap items-center gap-2 md:gap-3">
@@ -116,8 +66,7 @@
               {% if user.is_admin %}
               <a href="/settings" class="{{ nav_link }}">Settings</a>
               <a href="/admin/users" class="{{ nav_link }}">Users</a>
-              {% endif %}
-              {% endif %}
+              {% endif %} {% endif %}
             </div>
           </div>
           <div class="flex flex-wrap items-center gap-3 md:justify-end">
@@ -132,8 +81,7 @@
               {% endif %}
               <button type="submit" class="{{ nav_button }}">Log out</button>
             </form>
-            {% else %}
-            {% if layout.registration_open %}
+            {% else %} {% if layout.registration_open %}
             <a href="/register" class="{{ nav_primary }}">Register</a>
             {% endif %}
             <a href="/login" class="{{ nav_button }}">Login</a>
@@ -143,13 +91,20 @@
       </header>
 
       <main class="flex-1">
-        <div class="mx-auto w-full max-w-6xl px-6">{% block content %}{% endblock %}</div>
+        <div class="mx-auto w-full max-w-6xl px-6">
+          {% block content %}{% endblock %}
+        </div>
       </main>
 
-      <footer class="border-t border-slate-800 bg-slate-950/90">
-        <div class="mx-auto flex w-full max-w-6xl flex-col items-center gap-2 px-6 py-8 text-xs text-slate-500 sm:flex-row sm:justify-between">
-          <span>&copy; {{ layout.current_year }} {{ layout.brand_name }}. All rights reserved.</span>
-          <span class="text-slate-600">Secure sharing for teams.</span>
+      <footer class="border-t border-gray-800 bg-gray-950/90">
+        <div
+          class="mx-auto flex w-full max-w-6xl flex-col items-center gap-2 px-6 py-8 text-xs text-gray-500 sm:flex-row sm:justify-between"
+        >
+          <span
+            >&copy; {{ layout.current_year }} {{ layout.brand_name }}. All
+            rights reserved.</span
+          >
+          <span class="text-gray-600">Secure sharing for teams.</span>
         </div>
       </footer>
     </div>

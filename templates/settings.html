@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 
 {% block content %}
-{% set card_base = "rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-xl shadow-slate-950/40 backdrop-blur" %}
+{% set card_base = "rounded-2xl border border-gray-800 bg-gray-900/70 p-6 shadow-xl shadow-gray-950/40 backdrop-blur" %}
 {% set alert_success = "rounded-2xl border border-emerald-500/60 bg-emerald-500/10 p-4 text-sm text-emerald-100 shadow-lg shadow-emerald-500/20" %}
 {% set alert_error = "rounded-2xl border border-rose-500/60 bg-rose-500/10 p-4 text-sm text-rose-100 shadow-lg shadow-rose-500/20" %}
-{% set button_primary = "inline-flex items-center justify-center gap-2 rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-sm transition hover:bg-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300" %}
-{% set input_class = "mt-2 w-full rounded-lg border border-slate-800 bg-slate-900/70 px-3 py-2 text-base text-slate-100 placeholder:text-slate-500 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40" %}
+{% set button_primary = "inline-flex items-center justify-center gap-2 rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-gray-950 shadow-sm transition hover:bg-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300" %}
+{% set input_class = "mt-2 w-full rounded-lg border border-gray-800 bg-gray-900/70 px-3 py-2 text-base text-gray-100 placeholder:text-gray-500 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40" %}
 
 <section class="mx-auto w-full max-w-4xl space-y-6 py-10">
     <div class="space-y-2">
@@ -13,7 +13,7 @@
             <i data-feather="settings" class="h-7 w-7 text-sky-400"></i>
             Admin Settings
         </h1>
-        <p class="text-sm text-slate-400">Configure global application preferences, security, and quotas.</p>
+        <p class="text-sm text-gray-400">Configure global application preferences, security, and quotas.</p>
     </div>
 
     {% if let Some(message) = success_message %}
@@ -30,16 +30,12 @@
 
     <article class="{{ card_base }}">
         <form method="post" action="/settings" class="space-y-8">
-            {% if let Some(csrf) = layout.csrf %}
-            <input type="hidden" name="csrf_token" value="{{ csrf.token }}" />
-            {% endif %}
-
-            <section class="space-y-4 border-b border-slate-800 pb-6 last:border-b-0 last:pb-0">
+            <section class="space-y-4 border-b border-gray-800 pb-6 last:border-b-0 last:pb-0">
                 <h3 class="flex items-center gap-2 text-lg font-semibold text-white">
-                    <i data-feather="eye" class="h-5 w-5 text-slate-400"></i>
+                    <i data-feather="eye" class="h-5 w-5 text-gray-400"></i>
                     Appearance
                 </h3>
-                <label for="ui_brand_name" class="flex flex-col text-sm font-semibold text-slate-200">
+                <label for="ui_brand_name" class="flex flex-col text-sm font-semibold text-gray-200">
                     Brand name
                     <input
                         type="text"
@@ -54,17 +50,17 @@
                     {% if let Some(err) = field_errors.ui_brand_name %}
                     <small class="mt-2 text-sm font-medium text-rose-300">{{ err }}</small>
                     {% else %}
-                    <small class="mt-2 text-sm text-slate-400">Displayed in the header and page titles.</small>
+                    <small class="mt-2 text-sm text-gray-400">Displayed in the header and page titles.</small>
                     {% endif %}
                 </label>
             </section>
 
-            <section class="space-y-4 border-b border-slate-800 pb-6 last:border-b-0 last:pb-0">
+            <section class="space-y-4 border-b border-gray-800 pb-6 last:border-b-0 last:pb-0">
                 <h3 class="flex items-center gap-2 text-lg font-semibold text-white">
-                    <i data-feather="upload-cloud" class="h-5 w-5 text-slate-400"></i>
+                    <i data-feather="upload-cloud" class="h-5 w-5 text-gray-400"></i>
                     Upload Settings
                 </h3>
-                <label for="max_file_size_bytes" class="flex flex-col text-sm font-semibold text-slate-200">
+                <label for="max_file_size_bytes" class="flex flex-col text-sm font-semibold text-gray-200">
                     Maximum upload size (bytes)
                     <input
                         type="number"
@@ -80,11 +76,11 @@
                     {% if let Some(err) = field_errors.max_file_size_bytes %}
                     <small class="mt-2 text-sm font-medium text-rose-300">{{ err }}</small>
                     {% else %}
-                    <small class="mt-2 text-sm text-slate-400">Enter the maximum file size in bytes (e.g. 52428800 for 50 MB).</small>
+                    <small class="mt-2 text-sm text-gray-400">Enter the maximum file size in bytes (e.g. 52428800 for 50 MB).</small>
                     {% endif %}
                 </label>
 
-                <label for="default_expiration_hours" class="flex flex-col text-sm font-semibold text-slate-200">
+                <label for="default_expiration_hours" class="flex flex-col text-sm font-semibold text-gray-200">
                     Default expiration (hours)
                     <input
                         type="number"
@@ -99,17 +95,17 @@
                     {% if let Some(err) = field_errors.default_expiration_hours %}
                     <small class="mt-2 text-sm font-medium text-rose-300">{{ err }}</small>
                     {% else %}
-                    <small class="mt-2 text-sm text-slate-400">New uploads inherit this expiration unless overridden.</small>
+                    <small class="mt-2 text-sm text-gray-400">New uploads inherit this expiration unless overridden.</small>
                     {% endif %}
                 </label>
             </section>
 
-            <section class="space-y-4 border-b border-slate-800 pb-6 last:border-b-0 last:pb-0">
+            <section class="space-y-4 border-b border-gray-800 pb-6 last:border-b-0 last:pb-0">
                 <h3 class="flex items-center gap-2 text-lg font-semibold text-white">
-                    <i data-feather="link" class="h-5 w-5 text-slate-400"></i>
+                    <i data-feather="link" class="h-5 w-5 text-gray-400"></i>
                     Link Settings
                 </h3>
-                <label for="direct_link_ttl_minutes" class="flex flex-col text-sm font-semibold text-slate-200">
+                <label for="direct_link_ttl_minutes" class="flex flex-col text-sm font-semibold text-gray-200">
                     Direct link lifetime (minutes)
                     <input
                         type="number"
@@ -124,40 +120,44 @@
                     {% if let Some(err) = field_errors.direct_link_ttl_minutes %}
                     <small class="mt-2 text-sm font-medium text-rose-300">{{ err }}</small>
                     {% else %}
-                    <small class="mt-2 text-sm text-slate-400">Controls how long new direct download tokens remain valid.</small>
+                    <small class="mt-2 text-sm text-gray-400">Controls how long new direct download tokens remain valid.</small>
                     {% endif %}
                 </label>
             </section>
 
             <section class="space-y-4">
                 <h3 class="flex items-center gap-2 text-lg font-semibold text-white">
-                    <i data-feather="shield" class="h-5 w-5 text-slate-400"></i>
+                    <i data-feather="shield" class="h-5 w-5 text-gray-400"></i>
                     Security
                 </h3>
-                <label for="allow_anonymous_download" class="flex items-center gap-3 text-sm font-medium text-slate-200">
+                <label for="allow_anonymous_download" class="flex items-center gap-3 text-sm font-medium text-gray-200">
                     <input
                         type="checkbox"
                         id="allow_anonymous_download"
                         name="allow_anonymous_download"
                         {% if form.allow_anonymous_download %}checked{% endif %}
-                        class="h-4 w-4 rounded border-slate-700 bg-slate-900 text-sky-500 focus:ring-sky-400"
+                        class="h-4 w-4 rounded border-gray-700 bg-gray-900 text-sky-500 focus:ring-sky-400"
                     />
                     Allow anonymous file downloads
                 </label>
-                <small class="pl-7 text-sm text-slate-400">When disabled, only authenticated users may download files.</small>
+                <small class="pl-7 text-sm text-gray-400">When disabled, only authenticated users may download files.</small>
 
-                <label for="allow_registration" class="flex items-center gap-3 text-sm font-medium text-slate-200">
+                <label for="allow_registration" class="flex items-center gap-3 text-sm font-medium text-gray-200">
                     <input
                         type="checkbox"
                         id="allow_registration"
                         name="allow_registration"
                         {% if form.allow_registration %}checked{% endif %}
-                        class="h-4 w-4 rounded border-slate-700 bg-slate-900 text-sky-500 focus:ring-sky-400"
+                        class="h-4 w-4 rounded border-gray-700 bg-gray-900 text-sky-500 focus:ring-sky-400"
                     />
                     Allow users to self-register
                 </label>
-                <small class="pl-7 text-sm text-slate-400">When disabled, only administrators can create new accounts.</small>
+                <small class="pl-7 text-sm text-gray-400">When disabled, only administrators can create new accounts.</small>
             </section>
+
+            {% if let Some(csrf) = layout.csrf %}
+            <input type="hidden" name="csrf_token" value="{{ csrf.token }}" />
+            {% endif %}
 
             <div class="flex justify-end">
                 <button type="submit" class="{{ button_primary }}">
