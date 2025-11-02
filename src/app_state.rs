@@ -1,7 +1,9 @@
 use crate::{
     config::AppConfig,
     direct_links::{DownloadTokenService, TokenError as DownloadTokenError},
-    rate_limit::{DirectDownloadRateLimiter, DirectLinkRateLimiter, LoginRateLimiter},
+    rate_limit::{
+        DirectDownloadRateLimiter, DirectLinkRateLimiter, LoginRateLimiter, RegistrationRateLimiter,
+    },
     settings::SettingsService,
 };
 use sqlx::SqlitePool;
@@ -21,6 +23,8 @@ pub struct AppState {
     pub direct_link_rate_limiter: Arc<DirectLinkRateLimiter>,
     /// Direct download rate limiter
     pub direct_download_rate_limiter: Arc<DirectDownloadRateLimiter>,
+    /// Registration rate limiter
+    pub registration_rate_limiter: Arc<RegistrationRateLimiter>,
     /// Service responsible for issuing and validating download tokens
     pub download_tokens: Arc<DownloadTokenService>,
     /// Cached application settings loaded from the database
@@ -46,6 +50,7 @@ impl AppState {
             login_rate_limiter: Arc::new(LoginRateLimiter::new()),
             direct_link_rate_limiter: Arc::new(DirectLinkRateLimiter::new()),
             direct_download_rate_limiter: Arc::new(DirectDownloadRateLimiter::new()),
+            registration_rate_limiter: Arc::new(RegistrationRateLimiter::new()),
             download_tokens: Arc::new(download_tokens),
             settings: Arc::new(settings_service),
         })
@@ -74,6 +79,11 @@ impl AppState {
     /// Access the direct download rate limiter
     pub fn direct_download_rate_limiter(&self) -> &DirectDownloadRateLimiter {
         &self.direct_download_rate_limiter
+    }
+
+    /// Access the registration rate limiter
+    pub fn registration_rate_limiter(&self) -> &RegistrationRateLimiter {
+        &self.registration_rate_limiter
     }
 
     /// Access the download token service

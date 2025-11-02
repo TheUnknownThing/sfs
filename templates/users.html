@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section>
+    <hgroup>
+        <h1>
+            <i data-feather="users" style="width: 28px; height: 28px; vertical-align: middle; margin-right: 0.5rem;"></i>
+            User management
+        </h1>
+        <p>Manage access, promote administrators, and handle account lifecycle.</p>
+    </hgroup>
+
+    {% if let Some(message) = success_message %}
+    <div class="card success" role="status">
+        <strong>✓ Success!</strong> {{ message }}
+    </div>
+    {% endif %}
+
+    {% if let Some(message) = general_error %}
+    <div class="card error" role="alert">
+        <strong>Error:</strong> {{ message }}
+    </div>
+    {% endif %}
+
+    <article class="form-section">
+        <header>
+            <h2 style="margin: 0;">
+                <i data-feather="user-plus" style="width: 22px; height: 22px; vertical-align: middle; margin-right: 0.5rem;"></i>
+                Add user
+            </h2>
+        </header>
+        <form method="post" action="/admin/users">
+            {% if let Some(csrf) = layout.csrf %}
+            <input type="hidden" name="csrf_token" value="{{ csrf.token }}">
+            {% endif %}
+
+            <div class="grid">
+                <label for="add-user-username" style="grid-column: span 2;">
+                    Username
+                    <input
+                        id="add-user-username"
+                        name="username"
+                        type="text"
+                        autocomplete="username"
+                        value="{{ add_form.username }}"
+                        minlength="3"
+                        maxlength="64"
+                        required>
+                    {% if let Some(err) = add_errors.username %}
+                    <small class="error">{{ err }}</small>
+                    {% else %}
+                    <small>Lowercase letters, numbers, hyphen or period are recommended.</small>
+                    {% endif %}
+                </label>
+                <label for="add-user-password">
+                    Password
+                    <input
+                        id="add-user-password"
+                        name="password"
+                        type="password"
+                        autocomplete="new-password"
+                        minlength="12"
+                        required>
+                    {% if let Some(err) = add_errors.password %}
+                    <small class="error">{{ err }}</small>
+                    {% else %}
+                    <small>Minimum 12 characters.</small>
+                    {% endif %}
+                </label>
+                <label for="add-user-password-confirm">
+                    Confirm password
+                    <input
+                        id="add-user-password-confirm"
+                        name="password_confirm"
+                        type="password"
+                        autocomplete="new-password"
+                        minlength="12"
+                        required>
+                    {% if let Some(err) = add_errors.password_confirm %}
+                    <small class="error">{{ err }}</small>
+                    {% endif %}
+                </label>
+            </div>
+
+            <label for="add-user-is-admin" style="display: inline-flex; align-items: center; gap: 0.5rem; margin-top: 0.75rem;">
+                <input type="checkbox" id="add-user-is-admin" name="is_admin" {% if add_form.is_admin %}checked{% endif %}>
+                Grant administrator privileges
+            </label>
+            <small>Administrators can change global settings and manage other users.</small>
+
+            <div class="button-group" style="margin-top: 1.5rem;">
+                <button type="submit" class="icon-button">
+                    <i data-feather="user-plus"></i>
+                    Create user
+                </button>
+            </div>
+        </form>
+    </article>
+
+    <section>
+        <h2 style="display: flex; align-items: center; gap: 0.5rem;">
+            <i data-feather="shield" style="width: 22px; height: 22px;"></i>
+            Existing users
+        </h2>
+        {% if users.is_empty() %}
+        <p>No users found.</p>
+        {% else %}
+        <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
+            {% for user in users %}
+            <article class="card" style="border-radius: var(--pico-border-radius);">
+                <header style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h3 style="margin-bottom: 0.25rem;">{{ user.username }}</h3>
+                        <small>Created {{ user.created_display }}</small>
+                    </div>
+                    {% if user.is_admin %}
+                    <span class="user-badge" style="background: color-mix(in srgb, var(--pico-primary) 25%, transparent);">
+                        <i data-feather="star"></i>
+                        Admin
+                    </span>
+                    {% endif %}
+                </header>
+
+                <p style="margin-top: 0.75rem; margin-bottom: 0.75rem;">
+                    {% if let Some(last_seen) = user.last_login_display %}
+                    Last login: {{ last_seen }}
+                    {% else %}
+                    Last login: never
+                    {% endif %}
+                </p>
+
+                <details style="margin-bottom: 1rem;">
+                    <summary style="cursor: pointer;">Reset password</summary>
+                    <form method="post" action="/admin/users/{{ user.id }}/reset-password" style="margin-top: 0.75rem;">
+                        {% if let Some(csrf) = layout.csrf %}
+                        <input type="hidden" name="csrf_token" value="{{ csrf.token }}">
+                        {% endif %}
+
+                        <label>
+                            New password
+                            <input type="password" name="new_password" minlength="12" required autocomplete="new-password">
+                        </label>
+                        <label>
+                            Confirm password
+                            <input type="password" name="confirm_password" minlength="12" required autocomplete="new-password">
+                        </label>
+                        <button type="submit" class="secondary icon-button" style="margin-top: 0.75rem;">
+                            <i data-feather="refresh-cw"></i>
+                            Reset password
+                        </button>
+                    </form>
+                </details>
+
+                <form method="post" action="/admin/users/{{ user.id }}/delete" onsubmit="return confirm('Delete user {{ user.username }}? This action cannot be undone.');">
+                    {% if let Some(csrf) = layout.csrf %}
+                    <input type="hidden" name="csrf_token" value="{{ csrf.token }}">
+                    {% endif %}
+                    <button type="submit" class="contrast" style="background: color-mix(in srgb, var(--pico-del-color) 20%, var(--pico-card-background-color));">
+                        <i data-feather="trash-2"></i>
+                        Delete user
+                    </button>
+                </form>
+            </article>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </section>
+</section>
+{% endblock %}

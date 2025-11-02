@@ -11,11 +11,13 @@ mod rate_limit;
 mod sessions;
 mod settings;
 mod templates;
+mod users;
 
 use app_state::AppState;
 use auth::{
     bootstrap_admin_user, find_user_by_username, hash_password, normalize_username,
-    randomized_backoff, touch_user_login, update_password_hash, verify_password, AuthError,
+    randomized_backoff, touch_user_login, update_password_hash, validate_password_strength,
+    verify_password, AuthError,
 };
 use axum::{
     body::Body,
@@ -43,9 +45,11 @@ use std::{
     sync::Arc,
 };
 use templates::{
-    DirectLinkErrorTemplate, DirectLinkSnippetTemplate, FileTemplate, HomeTemplate, HomeUploadRow,
-    HtmlTemplate, LayoutContext, LoginTemplate, SettingsFieldErrors, SettingsFormValues,
-    SettingsTemplate, UploadTemplate,
+    AddUserFieldErrors, AddUserFormValues, DirectLinkErrorTemplate, DirectLinkSnippetTemplate,
+    FileTemplate, HomeTemplate, HomeUploadRow, HtmlTemplate, LayoutContext, LoginTemplate,
+    ManagedUserRow, RegisterTemplate, RegistrationFieldErrors, RegistrationFormValues,
+    SettingsFieldErrors, SettingsFormValues, SettingsTemplate, UploadTemplate,
+    UserManagementTemplate,
 };
 use thiserror::Error;
 use time::{Duration as TimeDuration, OffsetDateTime};
@@ -149,11 +153,24 @@ async fn main() -> Result<(), AppError> {
         .route("/f/:code/link", post(file_direct_link_handler))
         .route("/d/:token", get(download_handler))
         .route("/login", get(login_form_handler).post(login_submit_handler))
+        .route(
+            "/register",
+            get(register_form_handler).post(register_submit_handler),
+        )
         .route("/logout", post(logout_handler))
         .route(
             "/settings",
             get(settings_form_handler).post(settings_submit_handler),
         )
+        .route(
+            "/admin/users",
+            get(user_management_page_handler).post(user_create_handler),
+        )
+        .route(
+            "/admin/users/:id/reset-password",
+            post(user_reset_password_handler),
+        )
+        .route("/admin/users/:id/delete", post(user_delete_handler))
         .merge(upload_routes)
         .layer(
             ServiceBuilder::new()
@@ -643,6 +660,7 @@ async fn settings_submit_handler(
         default_expiration_hours: form.default_expiration_hours.trim().to_string(),
         direct_link_ttl_minutes: form.direct_link_ttl_minutes.trim().to_string(),
         allow_anonymous_download: form.allow_anonymous_download.is_some(),
+        allow_registration: form.allow_registration.is_some(),
     };
 
     let csrf_valid = match csrf::validate_csrf_token(&session, &form.csrf_token).await {
@@ -761,6 +779,7 @@ async fn settings_submit_handler(
         default_expiration_hours,
         direct_link_ttl_minutes,
         allow_anonymous_download: form_values.allow_anonymous_download,
+        allow_registration: form_values.allow_registration,
         ui_brand_name: brand_name.to_string(),
     };
 
@@ -828,6 +847,549 @@ async fn render_settings_page(
     }
 
     (status, HtmlTemplate::new(template)).into_response()
+}
+
+async fn user_management_page_handler(State(state): State<AppState>, session: Session) -> Response {
+    if let Err(response) = require_admin(&session).await.map(|_| ()) {
+        return response;
+    }
+
+    let users = match fetch_user_rows(&state).await {
+        Ok(rows) => rows,
+        Err(response) => return response,
+    };
+
+    render_user_management_page(
+        &state,
+        &session,
+        StatusCode::OK,
+        users,
+        AddUserFormValues::default(),
+        AddUserFieldErrors::default(),
+        None,
+        None,
+    )
+    .await
+}
+
+async fn user_create_handler(
+    State(state): State<AppState>,
+    session: Session,
+    Form(form): Form<AddUserFormSubmission>,
+) -> Response {
+    let admin = match require_admin(&session).await {
+        Ok(user) => user,
+        Err(response) => return response,
+    };
+
+    let csrf_valid = match csrf::validate_csrf_token(&session, &form.csrf_token).await {
+        Ok(valid) => valid,
+        Err(err) => {
+            error!(target: "csrf", %err, "failed to validate CSRF token for add-user");
+            return server_error_response();
+        }
+    };
+
+    if !csrf_valid {
+        warn!(target: "csrf", user_id = admin.id, "add-user request failed CSRF validation");
+        if let Err(err) = csrf::rotate_csrf_token(&session).await {
+            error!(target: "csrf", %err, "failed to rotate CSRF token after add-user failure");
+        }
+        return match fetch_user_rows(&state).await {
+            Ok(users) => {
+                render_user_management_page(
+                    &state,
+                    &session,
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    users,
+                    AddUserFormValues {
+                        username: form.username.trim().to_string(),
+                        is_admin: form.is_admin.is_some(),
+                    },
+                    AddUserFieldErrors::default(),
+                    Some("Your session expired. Please try again.".to_string()),
+                    None,
+                )
+                .await
+            }
+            Err(response) => response,
+        };
+    }
+
+    let mut field_errors = AddUserFieldErrors::default();
+    let mut has_errors = false;
+    let username_input = form.username.trim();
+    let add_form = AddUserFormValues {
+        username: username_input.to_string(),
+        is_admin: form.is_admin.is_some(),
+    };
+
+    let normalized_username = match normalize_username(username_input) {
+        Ok(username) => username,
+        Err(_) => {
+            field_errors.username =
+                Some("Enter a username between 3 and 64 characters without spaces.".to_string());
+            has_errors = true;
+            String::new()
+        }
+    };
+
+    if let Err(err) = validate_password_strength(&form.password) {
+        match err {
+            AuthError::InvalidPassword => {
+                field_errors.password =
+                    Some("Password must be at least 12 characters long.".to_string());
+            }
+            _ => {
+                error!(target: "auth", %err, "unexpected password validation error while adding user");
+                return server_error_response();
+            }
+        }
+        has_errors = true;
+    }
+
+    if form.password != form.password_confirm {
+        field_errors.password_confirm = Some("Passwords do not match.".to_string());
+        has_errors = true;
+    }
+
+    if normalized_username.is_empty() {
+        has_errors = true;
+    }
+
+    let users_snapshot = match fetch_user_rows(&state).await {
+        Ok(rows) => rows,
+        Err(response) => return response,
+    };
+
+    if has_errors {
+        return render_user_management_page(
+            &state,
+            &session,
+            StatusCode::UNPROCESSABLE_ENTITY,
+            users_snapshot,
+            add_form,
+            field_errors,
+            Some("Please correct the highlighted fields.".to_string()),
+            None,
+        )
+        .await;
+    }
+
+    match find_user_by_username(state.db(), &normalized_username).await {
+        Ok(Some(_)) => {
+            field_errors.username = Some("That username is already taken.".to_string());
+            return render_user_management_page(
+                &state,
+                &session,
+                StatusCode::UNPROCESSABLE_ENTITY,
+                users_snapshot,
+                add_form,
+                field_errors,
+                Some("Unable to create the user.".to_string()),
+                None,
+            )
+            .await;
+        }
+        Ok(None) => {}
+        Err(err) => {
+            error!(target: "auth", %err, "failed to check existing user during add-user");
+            return server_error_response();
+        }
+    }
+
+    let password_hash = match hash_password(
+        &form.password,
+        state.config().security.password_pepper.as_deref(),
+    )
+    .await
+    {
+        Ok(hash) => hash,
+        Err(err) => {
+            error!(target: "auth", %err, "failed to hash password while adding user");
+            return server_error_response();
+        }
+    };
+
+    if let Err(err) = users::create_user(
+        state.db(),
+        &normalized_username,
+        &password_hash,
+        form.is_admin.is_some(),
+    )
+    .await
+    {
+        if is_unique_violation(&err) {
+            field_errors.username = Some("That username is already taken.".to_string());
+            return render_user_management_page(
+                &state,
+                &session,
+                StatusCode::UNPROCESSABLE_ENTITY,
+                users_snapshot,
+                add_form,
+                field_errors,
+                Some("Unable to create the user.".to_string()),
+                None,
+            )
+            .await;
+        }
+
+        error!(target: "users", %err, "failed to insert new user from admin panel");
+        return server_error_response();
+    }
+
+    if let Err(err) = csrf::rotate_csrf_token(&session).await {
+        error!(target: "csrf", %err, "failed to rotate CSRF token after adding user");
+    }
+
+    info!(
+        target: "users",
+        admin_id = admin.id,
+        admin_username = %admin.username,
+        new_username = %normalized_username,
+        is_admin = form.is_admin.is_some(),
+        "administrator created new user"
+    );
+
+    match fetch_user_rows(&state).await {
+        Ok(users) => {
+            render_user_management_page(
+                &state,
+                &session,
+                StatusCode::OK,
+                users,
+                AddUserFormValues::default(),
+                AddUserFieldErrors::default(),
+                None,
+                Some("User created successfully.".to_string()),
+            )
+            .await
+        }
+        Err(response) => response,
+    }
+}
+
+async fn user_reset_password_handler(
+    State(state): State<AppState>,
+    session: Session,
+    AxumPath(user_id): AxumPath<i64>,
+    Form(form): Form<ResetUserPasswordForm>,
+) -> Response {
+    let admin = match require_admin(&session).await {
+        Ok(user) => user,
+        Err(response) => return response,
+    };
+
+    let csrf_valid = match csrf::validate_csrf_token(&session, &form.csrf_token).await {
+        Ok(valid) => valid,
+        Err(err) => {
+            error!(target: "csrf", %err, "failed to validate CSRF token for password reset");
+            return server_error_response();
+        }
+    };
+
+    if !csrf_valid {
+        warn!(target: "csrf", user_id = admin.id, "reset-password request failed CSRF validation");
+        if let Err(err) = csrf::rotate_csrf_token(&session).await {
+            error!(target: "csrf", %err, "failed to rotate CSRF token after reset-password failure");
+        }
+        return match fetch_user_rows(&state).await {
+            Ok(users) => {
+                render_user_management_page(
+                    &state,
+                    &session,
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    users,
+                    AddUserFormValues::default(),
+                    AddUserFieldErrors::default(),
+                    Some("Your session expired. Please try again.".to_string()),
+                    None,
+                )
+                .await
+            }
+            Err(response) => response,
+        };
+    }
+
+    if form.new_password != form.confirm_password {
+        return match fetch_user_rows(&state).await {
+            Ok(users) => {
+                render_user_management_page(
+                    &state,
+                    &session,
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    users,
+                    AddUserFormValues::default(),
+                    AddUserFieldErrors::default(),
+                    Some("Passwords do not match.".to_string()),
+                    None,
+                )
+                .await
+            }
+            Err(response) => response,
+        };
+    }
+
+    if let Err(err) = validate_password_strength(&form.new_password) {
+        match err {
+            AuthError::InvalidPassword => {
+                return match fetch_user_rows(&state).await {
+                    Ok(users) => {
+                        render_user_management_page(
+                            &state,
+                            &session,
+                            StatusCode::UNPROCESSABLE_ENTITY,
+                            users,
+                            AddUserFormValues::default(),
+                            AddUserFieldErrors::default(),
+                            Some("Password must be at least 12 characters long.".to_string()),
+                            None,
+                        )
+                        .await
+                    }
+                    Err(response) => response,
+                };
+            }
+            _ => {
+                error!(target: "auth", %err, "unexpected password validation error during reset");
+                return server_error_response();
+            }
+        }
+    }
+
+    let target_user = match users::find_user_by_id(state.db(), user_id).await {
+        Ok(Some(user)) => user,
+        Ok(None) => {
+            return match fetch_user_rows(&state).await {
+                Ok(users) => {
+                    render_user_management_page(
+                        &state,
+                        &session,
+                        StatusCode::NOT_FOUND,
+                        users,
+                        AddUserFormValues::default(),
+                        AddUserFieldErrors::default(),
+                        Some("That user no longer exists.".to_string()),
+                        None,
+                    )
+                    .await
+                }
+                Err(response) => response,
+            };
+        }
+        Err(err) => {
+            error!(target: "users", %err, user_id, "failed to load user for password reset");
+            return server_error_response();
+        }
+    };
+
+    let new_hash = match hash_password(
+        &form.new_password,
+        state.config().security.password_pepper.as_deref(),
+    )
+    .await
+    {
+        Ok(hash) => hash,
+        Err(err) => {
+            error!(target: "auth", %err, "failed to hash password during admin reset");
+            return server_error_response();
+        }
+    };
+
+    if let Err(err) = update_password_hash(state.db(), target_user.id, &new_hash).await {
+        error!(target: "auth", %err, user_id = target_user.id, "failed to update password hash during reset");
+        return server_error_response();
+    }
+
+    if let Err(err) = csrf::rotate_csrf_token(&session).await {
+        error!(target: "csrf", %err, "failed to rotate CSRF token after password reset");
+    }
+
+    info!(
+        target: "users",
+        admin_id = admin.id,
+        admin_username = %admin.username,
+        target_id = target_user.id,
+        target_username = %target_user.username,
+        "administrator reset user password"
+    );
+
+    match fetch_user_rows(&state).await {
+        Ok(users) => {
+            render_user_management_page(
+                &state,
+                &session,
+                StatusCode::OK,
+                users,
+                AddUserFormValues::default(),
+                AddUserFieldErrors::default(),
+                None,
+                Some(format!(
+                    "Password reset for user '{}'.",
+                    target_user.username
+                )),
+            )
+            .await
+        }
+        Err(response) => response,
+    }
+}
+
+async fn user_delete_handler(
+    State(state): State<AppState>,
+    session: Session,
+    AxumPath(user_id): AxumPath<i64>,
+    Form(form): Form<DeleteUserForm>,
+) -> Response {
+    let admin = match require_admin(&session).await {
+        Ok(user) => user,
+        Err(response) => return response,
+    };
+
+    let csrf_valid = match csrf::validate_csrf_token(&session, &form.csrf_token).await {
+        Ok(valid) => valid,
+        Err(err) => {
+            error!(target: "csrf", %err, "failed to validate CSRF token for delete-user");
+            return server_error_response();
+        }
+    };
+
+    if !csrf_valid {
+        warn!(target: "csrf", user_id = admin.id, "delete-user request failed CSRF validation");
+        if let Err(err) = csrf::rotate_csrf_token(&session).await {
+            error!(target: "csrf", %err, "failed to rotate CSRF token after delete-user failure");
+        }
+        return match fetch_user_rows(&state).await {
+            Ok(users) => {
+                render_user_management_page(
+                    &state,
+                    &session,
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    users,
+                    AddUserFormValues::default(),
+                    AddUserFieldErrors::default(),
+                    Some("Your session expired. Please try again.".to_string()),
+                    None,
+                )
+                .await
+            }
+            Err(response) => response,
+        };
+    }
+
+    let target_user = match users::find_user_by_id(state.db(), user_id).await {
+        Ok(Some(user)) => user,
+        Ok(None) => {
+            return match fetch_user_rows(&state).await {
+                Ok(users) => {
+                    render_user_management_page(
+                        &state,
+                        &session,
+                        StatusCode::NOT_FOUND,
+                        users,
+                        AddUserFormValues::default(),
+                        AddUserFieldErrors::default(),
+                        Some("That user no longer exists.".to_string()),
+                        None,
+                    )
+                    .await
+                }
+                Err(response) => response,
+            };
+        }
+        Err(err) => {
+            error!(target: "users", %err, user_id, "failed to load user for deletion");
+            return server_error_response();
+        }
+    };
+
+    if target_user.id == admin.id {
+        return match fetch_user_rows(&state).await {
+            Ok(users) => {
+                render_user_management_page(
+                    &state,
+                    &session,
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    users,
+                    AddUserFormValues::default(),
+                    AddUserFieldErrors::default(),
+                    Some("You cannot delete your own account.".to_string()),
+                    None,
+                )
+                .await
+            }
+            Err(response) => response,
+        };
+    }
+
+    if target_user.is_admin {
+        match users::count_admin_users(state.db()).await {
+            Ok(count) if count <= 1 => {
+                return match fetch_user_rows(&state).await {
+                    Ok(users) => {
+                        render_user_management_page(
+                            &state,
+                            &session,
+                            StatusCode::UNPROCESSABLE_ENTITY,
+                            users,
+                            AddUserFormValues::default(),
+                            AddUserFieldErrors::default(),
+                            Some("At least one administrator must remain.".to_string()),
+                            None,
+                        )
+                        .await
+                    }
+                    Err(response) => response,
+                };
+            }
+            Ok(_) => {}
+            Err(err) => {
+                error!(target: "users", %err, "failed to count admin users before deletion");
+                return server_error_response();
+            }
+        }
+    }
+
+    match users::delete_user(state.db(), target_user.id).await {
+        Ok(affected) if affected == 1 => {}
+        Ok(_) => {
+            return server_error_response();
+        }
+        Err(err) => {
+            error!(target: "users", %err, user_id = target_user.id, "failed to delete user");
+            return server_error_response();
+        }
+    }
+
+    if let Err(err) = csrf::rotate_csrf_token(&session).await {
+        error!(target: "csrf", %err, "failed to rotate CSRF token after user deletion");
+    }
+
+    info!(
+        target: "users",
+        admin_id = admin.id,
+        admin_username = %admin.username,
+        target_id = target_user.id,
+        target_username = %target_user.username,
+        "administrator deleted user"
+    );
+
+    match fetch_user_rows(&state).await {
+        Ok(users) => {
+            render_user_management_page(
+                &state,
+                &session,
+                StatusCode::OK,
+                users,
+                AddUserFormValues::default(),
+                AddUserFieldErrors::default(),
+                None,
+                Some(format!("User '{}' deleted.", target_user.username)),
+            )
+            .await
+        }
+        Err(response) => response,
+    }
 }
 
 async fn require_admin(session: &Session) -> Result<SessionUser, Response> {
@@ -1230,6 +1792,47 @@ fn map_user_file_summary_for_home(record: files::UserFileSummary) -> Option<Home
         original_name: record.original_name,
         size_display,
         created_display,
+    })
+}
+
+fn map_user_summary_for_admin(record: users::UserSummary) -> Option<ManagedUserRow> {
+    let created_display = match OffsetDateTime::from_unix_timestamp(record.created_at) {
+        Ok(dt) => format_datetime_utc(dt),
+        Err(err) => {
+            debug!(
+                target: "users",
+                %err,
+                created_at = record.created_at,
+                user_id = record.id,
+                "invalid created_at stored for user"
+            );
+            return None;
+        }
+    };
+
+    let last_login_display = match record.last_login_at {
+        Some(ts) => match OffsetDateTime::from_unix_timestamp(ts) {
+            Ok(dt) => Some(format_datetime_utc(dt)),
+            Err(err) => {
+                debug!(
+                    target: "users",
+                    %err,
+                    last_login_at = ts,
+                    user_id = record.id,
+                    "invalid last_login_at stored for user"
+                );
+                None
+            }
+        },
+        None => None,
+    };
+
+    Some(ManagedUserRow {
+        id: record.id,
+        username: record.username,
+        is_admin: record.is_admin,
+        created_display,
+        last_login_display,
     })
 }
 
@@ -1700,6 +2303,264 @@ async fn login_submit_handler(
     Redirect::to("/").into_response()
 }
 
+async fn register_form_handler(State(state): State<AppState>, session: Session) -> Response {
+    match current_user(&session).await {
+        Ok(Some(_)) => return Redirect::to("/").into_response(),
+        Ok(None) => {}
+        Err(err) => {
+            error!(
+                target: "sessions",
+                %err,
+                "failed to read session while rendering registration form"
+            );
+            return server_error_response();
+        }
+    }
+
+    let settings = match current_app_settings(&state).await {
+        Ok(settings) => settings,
+        Err(response) => return response,
+    };
+
+    if !settings.allow_registration {
+        return registration_closed_response(&state, &session).await;
+    }
+
+    render_registration_form(
+        &state,
+        &session,
+        StatusCode::OK,
+        RegistrationFormValues::default(),
+        RegistrationFieldErrors::default(),
+        None,
+    )
+    .await
+}
+
+async fn register_submit_handler(
+    State(state): State<AppState>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    session: Session,
+    Form(form): Form<RegistrationForm>,
+) -> Response {
+    match current_user(&session).await {
+        Ok(Some(_)) => return Redirect::to("/").into_response(),
+        Ok(None) => {}
+        Err(err) => {
+            error!(
+                target: "sessions",
+                %err,
+                "failed to read session while processing registration"
+            );
+            return server_error_response();
+        }
+    }
+
+    let settings = match current_app_settings(&state).await {
+        Ok(settings) => settings,
+        Err(response) => return response,
+    };
+
+    if !settings.allow_registration {
+        return registration_closed_response(&state, &session).await;
+    }
+
+    let client_ip = addr.ip();
+    if let Err(err) = state.registration_rate_limiter().check_ip(client_ip) {
+        warn!(
+            target: "auth",
+            ip = %client_ip,
+            %err,
+            "registration request rate-limited"
+        );
+        let form_values = RegistrationFormValues {
+            username: form.username.trim().to_string(),
+        };
+        return registration_rate_limited_response(&state, &session, form_values, &err).await;
+    }
+
+    let csrf_valid = match csrf::validate_csrf_token(&session, &form.csrf_token).await {
+        Ok(valid) => valid,
+        Err(err) => {
+            error!(target: "csrf", %err, "failed to validate CSRF token on registration");
+            return server_error_response();
+        }
+    };
+
+    if !csrf_valid {
+        warn!(target: "csrf", "registration form submitted with invalid CSRF token");
+        if let Err(err) = csrf::rotate_csrf_token(&session).await {
+            error!(target: "csrf", %err, "failed to rotate CSRF token after invalid registration");
+        }
+        let form_values = RegistrationFormValues {
+            username: form.username.trim().to_string(),
+        };
+        return render_registration_form(
+            &state,
+            &session,
+            StatusCode::UNPROCESSABLE_ENTITY,
+            form_values,
+            RegistrationFieldErrors::default(),
+            Some("Your session expired. Please try again.".to_string()),
+        )
+        .await;
+    }
+
+    let mut field_errors = RegistrationFieldErrors::default();
+    let mut has_errors = false;
+    let username_input = form.username.trim();
+    let form_values = RegistrationFormValues {
+        username: username_input.to_string(),
+    };
+
+    let normalized_username = match normalize_username(username_input) {
+        Ok(username) => username,
+        Err(_) => {
+            field_errors.username =
+                Some("Enter a username between 3 and 64 characters without spaces.".to_string());
+            has_errors = true;
+            String::new()
+        }
+    };
+
+    if normalized_username.is_empty() {
+        return render_registration_form(
+            &state,
+            &session,
+            StatusCode::UNPROCESSABLE_ENTITY,
+            form_values,
+            field_errors,
+            Some("Please correct the highlighted fields.".to_string()),
+        )
+        .await;
+    }
+
+    if let Err(err) = validate_password_strength(&form.password) {
+        match err {
+            AuthError::InvalidPassword => {
+                field_errors.password =
+                    Some("Password must be at least 12 characters long.".to_string());
+            }
+            _ => {
+                error!(target: "auth", %err, "unexpected validation error on password strength");
+                return server_error_response();
+            }
+        }
+        has_errors = true;
+    }
+
+    if form.password != form.password_confirm {
+        field_errors.password_confirm = Some("Passwords do not match.".to_string());
+        has_errors = true;
+    }
+
+    if has_errors {
+        return render_registration_form(
+            &state,
+            &session,
+            StatusCode::UNPROCESSABLE_ENTITY,
+            form_values,
+            field_errors,
+            Some("Please correct the highlighted fields.".to_string()),
+        )
+        .await;
+    }
+
+    match find_user_by_username(state.db(), &normalized_username).await {
+        Ok(Some(_)) => {
+            let mut field_errors = RegistrationFieldErrors::default();
+            field_errors.username = Some("That username is already taken.".to_string());
+            return render_registration_form(
+                &state,
+                &session,
+                StatusCode::UNPROCESSABLE_ENTITY,
+                form_values,
+                field_errors,
+                Some("We couldn't create your account.".to_string()),
+            )
+            .await;
+        }
+        Ok(None) => {}
+        Err(err) => {
+            error!(target: "auth", %err, "failed to check username uniqueness during registration");
+            return server_error_response();
+        }
+    }
+
+    let password_hash = match hash_password(
+        &form.password,
+        state.config().security.password_pepper.as_deref(),
+    )
+    .await
+    {
+        Ok(hash) => hash,
+        Err(err) => {
+            error!(target: "auth", %err, "failed to hash password during registration");
+            return server_error_response();
+        }
+    };
+
+    if let Err(err) =
+        users::create_user(state.db(), &normalized_username, &password_hash, false).await
+    {
+        if is_unique_violation(&err) {
+            let mut field_errors = RegistrationFieldErrors::default();
+            field_errors.username = Some("That username is already taken.".to_string());
+            return render_registration_form(
+                &state,
+                &session,
+                StatusCode::UNPROCESSABLE_ENTITY,
+                form_values,
+                field_errors,
+                Some("We couldn't create your account.".to_string()),
+            )
+            .await;
+        }
+
+        error!(target: "auth", %err, "failed to create user during registration");
+        return server_error_response();
+    }
+
+    let user = match find_user_by_username(state.db(), &normalized_username).await {
+        Ok(Some(user)) => user,
+        Ok(None) => {
+            error!(
+                target: "auth",
+                username = %normalized_username,
+                "newly created user missing during registration lookup"
+            );
+            return server_error_response();
+        }
+        Err(err) => {
+            error!(target: "auth", %err, "failed to reload user after registration");
+            return server_error_response();
+        }
+    };
+
+    if let Err(err) = touch_user_login(state.db(), user.id).await {
+        warn!(target: "auth", %err, user_id = user.id, "failed to update last login after registration");
+    }
+
+    if let Err(err) = session.cycle_id().await {
+        error!(target: "auth", %err, "failed to cycle session ID after registration");
+        return server_error_response();
+    }
+
+    let session_user = SessionUser::new(user.id, user.username.clone(), user.is_admin);
+    if let Err(err) = store_user(&session, &session_user).await {
+        error!(target: "auth", %err, "failed to store new user in session");
+        return server_error_response();
+    }
+
+    if let Err(err) = csrf::rotate_csrf_token(&session).await {
+        error!(target: "csrf", %err, "failed to rotate CSRF token after registration");
+    }
+
+    info!(target: "auth", user_id = user.id, username = %user.username, "user registered successfully");
+
+    Redirect::to("/").into_response()
+}
+
 async fn logout_handler(session: Session, Form(form): Form<LogoutForm>) -> Response {
     let csrf_valid = match csrf::validate_csrf_token(&session, &form.csrf_token).await {
         Ok(valid) => valid,
@@ -1760,6 +2621,110 @@ async fn render_login_page(
     (status, HtmlTemplate::new(template)).into_response()
 }
 
+async fn render_registration_form(
+    state: &AppState,
+    session: &Session,
+    status: StatusCode,
+    form: RegistrationFormValues,
+    field_errors: RegistrationFieldErrors,
+    general_error: Option<String>,
+) -> Response {
+    let mut template = RegisterTemplate::new(layout_from_session(state, session, "Register").await)
+        .with_form(form)
+        .with_field_errors(field_errors);
+
+    if let Some(message) = general_error {
+        template = template.with_general_error(message);
+    }
+
+    (status, HtmlTemplate::new(template)).into_response()
+}
+
+async fn registration_closed_response(state: &AppState, session: &Session) -> Response {
+    render_registration_form(
+        state,
+        session,
+        StatusCode::FORBIDDEN,
+        RegistrationFormValues::default(),
+        RegistrationFieldErrors::default(),
+        Some("Registration is currently disabled.".to_string()),
+    )
+    .await
+}
+
+async fn registration_rate_limited_response(
+    state: &AppState,
+    session: &Session,
+    form: RegistrationFormValues,
+    error: &RateLimitError,
+) -> Response {
+    let message = match error {
+        RateLimitError::Registration(_) => {
+            "Too many registration attempts from this IP. Please wait and try again.".to_string()
+        }
+        _ => "Too many requests right now. Please wait before trying again.".to_string(),
+    };
+
+    let mut response = render_registration_form(
+        state,
+        session,
+        StatusCode::TOO_MANY_REQUESTS,
+        form,
+        RegistrationFieldErrors::default(),
+        Some(message),
+    )
+    .await;
+
+    let retry_after_secs = error.retry_after().as_secs().max(1);
+    if let Ok(value) = HeaderValue::from_str(&retry_after_secs.to_string()) {
+        response.headers_mut().insert(header::RETRY_AFTER, value);
+    }
+
+    response
+}
+
+async fn render_user_management_page(
+    state: &AppState,
+    session: &Session,
+    status: StatusCode,
+    users: Vec<users::UserSummary>,
+    add_form: AddUserFormValues,
+    add_errors: AddUserFieldErrors,
+    general_error: Option<String>,
+    success_message: Option<String>,
+) -> Response {
+    let layout = layout_from_session(state, session, "User management").await;
+
+    let mapped_users = users
+        .into_iter()
+        .filter_map(map_user_summary_for_admin)
+        .collect::<Vec<_>>();
+
+    let mut template = UserManagementTemplate::new(layout, mapped_users)
+        .with_add_form(add_form)
+        .with_add_errors(add_errors);
+
+    if let Some(message) = general_error {
+        template = template.with_general_error(message);
+    }
+
+    if let Some(message) = success_message {
+        template = template.with_success_message(message);
+    }
+
+    (status, HtmlTemplate::new(template)).into_response()
+}
+
+async fn fetch_user_rows(state: &AppState) -> Result<Vec<users::UserSummary>, Response> {
+    match users::list_users(state.db()).await {
+        Ok(rows) => Ok(rows),
+        Err(err) => {
+            error!(target: "users", %err, "failed to load users for management page");
+            Err(server_error_response())
+        }
+    }
+}
+
 async fn current_app_settings(state: &AppState) -> Result<Arc<AppSettings>, Response> {
     match state.settings().current().await {
         Ok(settings) => Ok(settings),
@@ -1789,6 +2754,9 @@ async fn rate_limited_login_response(
                 .to_string()
         }
         RateLimitError::DirectLink(_) | RateLimitError::DirectDownload(_) => {
+            "Too many requests right now. Please wait before trying again.".to_string()
+        }
+        RateLimitError::Registration(_) => {
             "Too many requests right now. Please wait before trying again.".to_string()
         }
     };
@@ -1903,9 +2871,39 @@ struct SettingsFormSubmission {
     default_expiration_hours: String,
     direct_link_ttl_minutes: String,
     allow_anonymous_download: Option<String>,
+    allow_registration: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
 struct LogoutForm {
+    csrf_token: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct RegistrationForm {
+    csrf_token: String,
+    username: String,
+    password: String,
+    password_confirm: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct AddUserFormSubmission {
+    csrf_token: String,
+    username: String,
+    password: String,
+    password_confirm: String,
+    is_admin: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ResetUserPasswordForm {
+    csrf_token: String,
+    new_password: String,
+    confirm_password: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct DeleteUserForm {
     csrf_token: String,
 }

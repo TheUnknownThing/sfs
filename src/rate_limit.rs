@@ -7,6 +7,7 @@ use governor::{
 };
 use thiserror::Error;
 
+const REGISTRATION_BURST: u32 = 1;
 const LINK_GENERATION_BURST: u32 = 5;
 const DIRECT_DOWNLOAD_BURST: u32 = 30;
 
@@ -110,6 +111,33 @@ impl DirectDownloadRateLimiter {
     }
 }
 
+/// Rate limiter for user registrations per client IP.
+pub struct RegistrationRateLimiter {
+    limiter: RateLimiter<IpAddr, DashMapStateStore<IpAddr>, DefaultClock>,
+}
+
+impl RegistrationRateLimiter {
+    pub fn new() -> Self {
+        let burst = NonZeroU32::new(REGISTRATION_BURST).expect("burst must be non-zero");
+        let quota = Quota::per_minute(burst);
+        Self {
+            limiter: RateLimiter::keyed(quota),
+        }
+    }
+
+    pub fn check_ip(&self, ip: IpAddr) -> Result<(), RateLimitError> {
+        match self.limiter.check_key(&ip) {
+            Ok(_) => {
+                self.limiter.retain_recent();
+                Ok(())
+            }
+            Err(not_until) => {
+                let wait = not_until.wait_time_from(DefaultClock::default().now());
+                Err(RateLimitError::Registration(wait))
+            }
+        }
+    }
+}
 #[derive(Debug, Error)]
 pub enum RateLimitError {
     #[error("Too many attempts from this IP. Try again in {0:?}.")]
@@ -120,6 +148,8 @@ pub enum RateLimitError {
     DirectLink(Duration),
     #[error("Too many download requests from this IP. Try again in {0:?}.")]
     DirectDownload(Duration),
+    #[error("Too many registration attempts from this IP. Try again in {0:?}.")]
+    Registration(Duration),
 }
 
 impl RateLimitError {
@@ -128,7 +158,8 @@ impl RateLimitError {
             RateLimitError::Ip(duration)
             | RateLimitError::Username(duration)
             | RateLimitError::DirectLink(duration)
-            | RateLimitError::DirectDownload(duration) => *duration,
+            | RateLimitError::DirectDownload(duration)
+            | RateLimitError::Registration(duration) => *duration,
         }
     }
 }

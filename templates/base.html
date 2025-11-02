@@ -317,6 +317,7 @@
           <li><a href="/upload" class="contrast">Upload</a></li>
           {% if user.is_admin %}
           <li><a href="/settings" class="contrast">Settings</a></li>
+          <li><a href="/admin/users" class="contrast">Users</a></li>
           {% endif %}
           <li>
             <span class="user-badge">
@@ -335,6 +336,11 @@
             </form>
           </li>
           {% else %}
+          {% if layout.registration_open %}
+          <li>
+            <a href="/register" role="button" class="nav-button contrast">Register</a>
+          </li>
+          {% endif %}
           <li>
             <a href="/login" role="button" class="outline nav-button contrast"
               >Login</a

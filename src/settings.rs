@@ -12,6 +12,7 @@ pub struct AppSettings {
     pub default_expiration_hours: u64,
     pub direct_link_ttl_minutes: u64,
     pub allow_anonymous_download: bool,
+    pub allow_registration: bool,
     pub ui_brand_name: String,
     #[allow(dead_code)]
     pub updated_at: i64,
@@ -23,6 +24,7 @@ pub struct SettingsUpdate {
     pub default_expiration_hours: u64,
     pub direct_link_ttl_minutes: u64,
     pub allow_anonymous_download: bool,
+    pub allow_registration: bool,
     pub ui_brand_name: String,
 }
 
@@ -104,6 +106,7 @@ impl SettingsService {
         } else {
             0
         };
+        let allow_registration = if update.allow_registration { 1 } else { 0 };
 
         sqlx::query!(
             r#"
@@ -113,6 +116,7 @@ impl SettingsService {
                 default_expiration_hours = ?,
                 direct_link_ttl_minutes = ?,
                 allow_anonymous_download = ?,
+                allow_registration = ?,
                 ui_brand_name = ?,
                 updated_at = strftime('%s', 'now')
             WHERE id = 1
@@ -121,6 +125,7 @@ impl SettingsService {
             default_expiration,
             direct_ttl,
             allow_download,
+            allow_registration,
             update.ui_brand_name,
         )
         .execute(&self.pool)
@@ -147,6 +152,7 @@ impl SettingsService {
                 default_expiration_hours,
                 direct_link_ttl_minutes,
                 allow_anonymous_download,
+                allow_registration,
                 ui_brand_name,
                 updated_at
             FROM settings
@@ -177,6 +183,7 @@ impl SettingsService {
             default_expiration_hours,
             direct_link_ttl_minutes,
             allow_anonymous_download: record.allow_anonymous_download != 0,
+            allow_registration: record.allow_registration != 0,
             ui_brand_name: record.ui_brand_name,
             updated_at: record.updated_at,
         })

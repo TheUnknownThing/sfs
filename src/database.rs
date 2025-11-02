@@ -57,9 +57,10 @@ pub async fn bootstrap_settings(pool: &SqlitePool) -> Result<(), DatabaseError> 
             INSERT INTO settings (
                 id, max_file_size_bytes, default_expiration_hours, 
                 direct_link_ttl_minutes, allow_anonymous_download, 
+                allow_registration,
                 ui_brand_name, updated_at
             ) VALUES (
-                1, 52428800, 168, 10, 1, 'Simple File Server', 
+                1, 52428800, 168, 10, 1, 0, 'Simple File Server', 
                 (strftime('%s', 'now'))
             )
             "#
@@ -142,6 +143,7 @@ async fn create_tables(pool: &SqlitePool) -> Result<(), DatabaseError> {
             default_expiration_hours INTEGER NOT NULL DEFAULT 168,
             direct_link_ttl_minutes INTEGER NOT NULL DEFAULT 10,
             allow_anonymous_download INTEGER NOT NULL DEFAULT 1,
+            allow_registration INTEGER NOT NULL DEFAULT 0,
             ui_brand_name TEXT NOT NULL DEFAULT 'Simple File Server',
             updated_at INTEGER NOT NULL
         )
@@ -149,6 +151,8 @@ async fn create_tables(pool: &SqlitePool) -> Result<(), DatabaseError> {
     )
     .execute(pool)
     .await?;
+
+    ensure_settings_table_schema(pool).await?;
 
     // Drop and recreate tower_sessions table for session store with correct schema
     sqlx::query("DROP TABLE IF EXISTS tower_sessions")
@@ -213,6 +217,26 @@ async fn ensure_users_table_schema(pool: &SqlitePool) -> Result<(), DatabaseErro
         sqlx::query("UPDATE users SET is_admin = 1 WHERE username = 'admin'")
             .execute(pool)
             .await?;
+    }
+
+    Ok(())
+}
+
+/// Ensure the settings table has the expected columns when upgrading existing databases.
+async fn ensure_settings_table_schema(pool: &SqlitePool) -> Result<(), DatabaseError> {
+    let has_allow_registration: Option<i64> = sqlx::query_scalar(
+        "SELECT 1 FROM pragma_table_info('settings') WHERE name = 'allow_registration' LIMIT 1",
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    if has_allow_registration.is_none() {
+        info!("Adding allow_registration column to settings table");
+        sqlx::query(
+            "ALTER TABLE settings ADD COLUMN allow_registration INTEGER NOT NULL DEFAULT 0",
+        )
+        .execute(pool)
+        .await?;
     }
 
     Ok(())

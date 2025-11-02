@@ -20,6 +20,7 @@ pub struct LayoutContext {
     pub csrf: Option<CsrfMeta>,
     pub current_year: i32,
     pub current_user: Option<CurrentUserMeta>,
+    pub registration_open: bool,
 }
 
 /// CSRF metadata exposed to templates
@@ -40,8 +41,12 @@ pub struct CurrentUserMeta {
 impl LayoutContext {
     /// Build a layout context using the configured brand name
     pub async fn from_state(state: &AppState, title: impl Into<String>) -> Self {
+        let mut registration_open = false;
         let brand_name = match state.settings().current().await {
-            Ok(settings) => settings.ui_brand_name.clone(),
+            Ok(settings) => {
+                registration_open = settings.allow_registration;
+                settings.ui_brand_name.clone()
+            }
             Err(err) => {
                 error!(
                     target: "settings",
@@ -58,6 +63,7 @@ impl LayoutContext {
             csrf: None,
             current_year: OffsetDateTime::now_utc().year(),
             current_user: None,
+            registration_open,
         }
     }
 
@@ -356,6 +362,7 @@ pub struct SettingsFormValues {
     pub default_expiration_hours: String,
     pub direct_link_ttl_minutes: String,
     pub allow_anonymous_download: bool,
+    pub allow_registration: bool,
     pub ui_brand_name: String,
 }
 
@@ -366,6 +373,7 @@ impl SettingsFormValues {
             default_expiration_hours: settings.default_expiration_hours.to_string(),
             direct_link_ttl_minutes: settings.direct_link_ttl_minutes.to_string(),
             allow_anonymous_download: settings.allow_anonymous_download,
+            allow_registration: settings.allow_registration,
             ui_brand_name: settings.ui_brand_name.clone(),
         }
     }
@@ -377,4 +385,117 @@ pub struct SettingsFieldErrors {
     pub default_expiration_hours: Option<String>,
     pub direct_link_ttl_minutes: Option<String>,
     pub ui_brand_name: Option<String>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct RegistrationFormValues {
+    pub username: String,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct RegistrationFieldErrors {
+    pub username: Option<String>,
+    pub password: Option<String>,
+    pub password_confirm: Option<String>,
+}
+
+#[derive(Template)]
+#[template(path = "register.html", escape = "html")]
+pub struct RegisterTemplate {
+    pub layout: LayoutContext,
+    pub form: RegistrationFormValues,
+    pub field_errors: RegistrationFieldErrors,
+    pub general_error: Option<String>,
+}
+
+impl RegisterTemplate {
+    pub fn new(layout: LayoutContext) -> Self {
+        Self {
+            layout,
+            form: RegistrationFormValues::default(),
+            field_errors: RegistrationFieldErrors::default(),
+            general_error: None,
+        }
+    }
+
+    pub fn with_form(mut self, form: RegistrationFormValues) -> Self {
+        self.form = form;
+        self
+    }
+
+    pub fn with_field_errors(mut self, errors: RegistrationFieldErrors) -> Self {
+        self.field_errors = errors;
+        self
+    }
+
+    pub fn with_general_error(mut self, message: impl Into<String>) -> Self {
+        self.general_error = Some(message.into());
+        self
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ManagedUserRow {
+    pub id: i64,
+    pub username: String,
+    pub is_admin: bool,
+    pub created_display: String,
+    pub last_login_display: Option<String>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct AddUserFormValues {
+    pub username: String,
+    pub is_admin: bool,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct AddUserFieldErrors {
+    pub username: Option<String>,
+    pub password: Option<String>,
+    pub password_confirm: Option<String>,
+}
+
+#[derive(Template)]
+#[template(path = "users.html", escape = "html")]
+pub struct UserManagementTemplate {
+    pub layout: LayoutContext,
+    pub users: Vec<ManagedUserRow>,
+    pub add_form: AddUserFormValues,
+    pub add_errors: AddUserFieldErrors,
+    pub general_error: Option<String>,
+    pub success_message: Option<String>,
+}
+
+impl UserManagementTemplate {
+    pub fn new(layout: LayoutContext, users: Vec<ManagedUserRow>) -> Self {
+        Self {
+            layout,
+            users,
+            add_form: AddUserFormValues::default(),
+            add_errors: AddUserFieldErrors::default(),
+            general_error: None,
+            success_message: None,
+        }
+    }
+
+    pub fn with_add_form(mut self, form: AddUserFormValues) -> Self {
+        self.add_form = form;
+        self
+    }
+
+    pub fn with_add_errors(mut self, errors: AddUserFieldErrors) -> Self {
+        self.add_errors = errors;
+        self
+    }
+
+    pub fn with_general_error(mut self, message: impl Into<String>) -> Self {
+        self.general_error = Some(message.into());
+        self
+    }
+
+    pub fn with_success_message(mut self, message: impl Into<String>) -> Self {
+        self.success_message = Some(message.into());
+        self
+    }
 }

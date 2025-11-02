@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section aria-labelledby="register-heading" style="max-width: 520px; margin: 2rem auto;">
+    <article>
+        <header>
+            <h1 id="register-heading" style="text-align: left; margin-bottom: 0.5rem;">
+                Create an account
+            </h1>
+            <p style="margin: 0; color: var(--pico-muted-color);">Join to upload and manage files.</p>
+        </header>
+
+        {% if let Some(message) = general_error %}
+        <div class="card error" role="alert">
+            <strong>Error:</strong> {{ message }}
+        </div>
+        {% endif %}
+
+        <form method="post" action="/register">
+            {% if let Some(csrf) = layout.csrf %}
+            <input type="hidden" name="csrf_token" value="{{ csrf.token }}">
+            {% endif %}
+
+            <label for="register-username">
+                Username
+                <input
+                    id="register-username"
+                    name="username"
+                    type="text"
+                    autocomplete="username"
+                    placeholder="your.name"
+                    value="{{ form.username }}"
+                    minlength="3"
+                    maxlength="64"
+                    required>
+                {% if let Some(err) = field_errors.username %}
+                <small class="error">{{ err }}</small>
+                {% else %}
+                <small>Lowercase letters, numbers, hyphen or period are recommended.</small>
+                {% endif %}
+            </label>
+
+            <label for="register-password">
+                Password
+                <input
+                    id="register-password"
+                    name="password"
+                    type="password"
+                    autocomplete="new-password"
+                    minlength="12"
+                    required>
+                {% if let Some(err) = field_errors.password %}
+                <small class="error">{{ err }}</small>
+                {% else %}
+                <small>Use a strong passphrase (minimum 12 characters).</small>
+                {% endif %}
+            </label>
+
+            <label for="register-password-confirm">
+                Confirm password
+                <input
+                    id="register-password-confirm"
+                    name="password_confirm"
+                    type="password"
+                    autocomplete="new-password"
+                    minlength="12"
+                    required>
+                {% if let Some(err) = field_errors.password_confirm %}
+                <small class="error">{{ err }}</small>
+                {% endif %}
+            </label>
+
+            <div class="button-group" style="margin-top: 1.5rem;">
+                <button type="submit" class="icon-button" style="flex: 1;">
+                    <i data-feather="user-plus"></i>
+                    Register
+                </button>
+                <a href="/login" role="button" class="secondary outline">Have an account?</a>
+            </div>
+        </form>
+    </article>
+</section>
+{% endblock %}

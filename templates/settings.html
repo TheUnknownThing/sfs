@@ -117,6 +117,15 @@
                     Allow anonymous file downloads
                 </label>
                 <small>When disabled, only authenticated users may download files.</small>
+                <label for="allow_registration" style="margin-top: 1rem; display: block;">
+                    <input
+                        type="checkbox"
+                        id="allow_registration"
+                        name="allow_registration"
+                        {% if form.allow_registration %}checked{% endif %}>
+                    Allow users to self-register
+                </label>
+                <small>When disabled, only administrators can create new accounts.</small>
             </div>
 
             <button type="submit" class="icon-button">
