@@ -36,6 +36,16 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
+      - name: Install sqlx-cli
+        run: cargo install sqlx-cli --no-default-features --features native-tls,sqlite
+
+      - name: Prepare sqlx query cache
+        run: |
+          export DATABASE_URL=sqlite:data/db.sqlite
+          touch $DATABASE_URL
+          cargo sqlx prepare -- --all-targets
+        shell: bash
+
       - name: Build
         run: cargo build --release --verbose
 
