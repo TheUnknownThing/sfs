@@ -103,7 +103,63 @@ pub async fn download_handler(
         return server_error_response();
     }
 
-    let storage_path = state.config().storage.root.join(&record.stored_path);
+    // Ensure stored_path cannot escape the configured storage root (prevent path traversal)
+    let storage_root = state.config().storage.root.clone();
+
+    let stored_path = std::path::Path::new(&record.stored_path);
+    if stored_path.is_absolute() {
+        warn!(
+            target: "links",
+            path = %record.stored_path,
+            file_id = %record.id,
+            "stored_path is absolute, rejecting to prevent path traversal"
+        );
+        return file_expired_response();
+    }
+
+    let joined = storage_root.join(&record.stored_path);
+
+    // Canonicalize the storage root (configuration problem -> server error)
+    let root_canon = match fs::canonicalize(&storage_root).await {
+        Ok(p) => p,
+        Err(err) => {
+            error!(
+                target: "links",
+                %err,
+                path = %storage_root.display(),
+                "failed to canonicalize storage root"
+            );
+            return server_error_response();
+        }
+    };
+
+    // Canonicalize the requested path (missing file or bad path -> treat as expired/missing)
+    let storage_path = match fs::canonicalize(&joined).await {
+        Ok(p) => p,
+        Err(err) => {
+            warn!(
+                target: "links",
+                %err,
+                path = %joined.display(),
+                file_id = %record.id,
+                "failed to canonicalize requested file path"
+            );
+            return file_expired_response();
+        }
+    };
+
+    // Ensure the resolved path is inside the configured storage root
+    if !storage_path.starts_with(&root_canon) {
+        warn!(
+            target: "links",
+            path = %storage_path.display(),
+            root = %root_canon.display(),
+            file_id = %record.id,
+            "refusing to serve file outside of storage root (possible path traversal)"
+        );
+        return file_expired_response();
+    }
+
     let file = match fs::File::open(&storage_path).await {
         Ok(file) => file,
         Err(err) => {
