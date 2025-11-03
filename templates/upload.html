@@ -24,19 +24,40 @@
 
     <article class="{{ card_base }} space-y-6">
         <form method="post" action="/upload" enctype="multipart/form-data" class="space-y-6">
-            <label class="block text-sm font-semibold text-gray-200">
-                <span class="flex items-center gap-2">
+            
+            <div>
+                <span class="flex items-center gap-2 text-sm font-semibold text-gray-200">
                     <i data-feather="file" class="h-4 w-4 text-gray-400"></i>
                     File
                 </span>
-                <input
-                    type="file"
-                    name="file"
-                    required
-                    aria-required="true"
-                    class="{{ input_class }} file:mr-4 file:rounded-md file:border-0 file:bg-sky-500 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-gray-950 hover:file:bg-sky-400"
-                />
-            </label>
+                
+                <label 
+                    id="drop-zone" for="file-upload" 
+                    class="relative mt-3 flex cursor-pointer justify-center rounded-lg border border-dashed border-gray-700 bg-gray-900/70 px-6 py-10 transition hover:border-sky-400 hover:bg-gray-900/90"
+                >
+                    <div id="drop-zone-text" class="text-center">
+                        <i data-feather="upload-cloud" class="mx-auto h-12 w-12 text-gray-500"></i>
+                        <p class="mt-4 text-sm text-gray-400">
+                            <span class="font-semibold text-sky-400">Click to upload</span> or drag and drop
+                        </p>
+                        <p class="text-xs text-gray-500">Use any file up to {{ max_file_size_display }}</p>
+                    </div>
+
+                    <div id="file-display" class="hidden text-center">
+                        <i data-feather="file-text" class="mx-auto h-12 w-12 text-sky-400"></i>
+                        <p id="file-name" class="mt-4 text-sm font-semibold text-gray-200"></p>
+                        <p class="text-xs text-gray-500">Click or drag another file to replace</p>
+                    </div>
+                    
+                    <input
+                        id="file-upload" type="file"
+                        name="file"
+                        required
+                        aria-required="true"
+                        class="sr-only"
+                    />
+                </label>
+            </div>
 
             <label class="block text-sm font-semibold text-gray-200">
                 <span class="flex items-center gap-2">
@@ -80,4 +101,73 @@
         </form>
     </article>
 </section>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-upload');
+        const dropZoneText = document.getElementById('drop-zone-text');
+        const fileDisplay = document.getElementById('file-display');
+        const fileNameDisplay = document.getElementById('file-name');
+        
+        // CSS classes for styling the drop zone when a file is dragged over
+        const activeDragClasses = ['border-sky-400', 'bg-gray-900/90'];
+        const inactiveDragClasses = ['border-gray-700'];
+
+        // Prevent default browser behavior for drag events
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            });
+        });
+
+        // Highlight drop zone on drag enter/over
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.classList.remove(...inactiveDragClasses);
+                dropZone.classList.add(...activeDragClasses);
+            });
+        });
+
+        // Remove highlight on drag leave or drop
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.classList.remove(...activeDragClasses);
+                dropZone.classList.add(...inactiveDragClasses);
+            });
+        });
+
+        // Handle file drop
+        dropZone.addEventListener('drop', (e) => {
+            // Get the dropped files from the event
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                // Assign the files to the hidden file input
+                fileInput.files = files; 
+                // Trigger the 'change' event on the file input
+                fileInput.dispatchEvent(new Event('change', { 'bubbles': true }));
+            }
+        });
+        
+        // Update UI when file is selected (from either click or drop)
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                const fileName = fileInput.files[0].name;
+                
+                // Update the file name display
+                fileNameDisplay.textContent = fileName;
+                
+                // Show file info, hide default "drag" text
+                dropZoneText.classList.add('hidden');
+                fileDisplay.classList.remove('hidden');
+                
+                // If you're using the Feather Icons library, this re-renders the icon
+                if (typeof feather !== 'undefined') {
+                    feather.replace();
+                }
+            }
+        });
+    });
+</script>
 {% endblock %}
