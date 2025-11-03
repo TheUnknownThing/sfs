@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS settings (
     allow_anonymous_download INTEGER NOT NULL DEFAULT 1,
     allow_registration INTEGER NOT NULL DEFAULT 0,
     ui_brand_name TEXT NOT NULL DEFAULT 'Simple File Server',
+    preview_max_size_bytes INTEGER NOT NULL DEFAULT 1048576,
     updated_at INTEGER NOT NULL
 );
 

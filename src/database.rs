@@ -55,12 +55,22 @@ pub async fn bootstrap_settings(pool: &SqlitePool) -> Result<(), DatabaseError> 
         sqlx::query!(
             r#"
             INSERT INTO settings (
-                id, max_file_size_bytes, default_expiration_hours, 
-                direct_link_ttl_minutes, allow_anonymous_download, 
+                id,
+                max_file_size_bytes,
+                default_expiration_hours,
+                direct_link_ttl_minutes,
+                allow_anonymous_download,
                 allow_registration,
-                ui_brand_name, updated_at
+                ui_brand_name,
+                updated_at
             ) VALUES (
-                1, 52428800, 168, 10, 1, 0, 'Simple File Server', 
+                1,
+                52428800,
+                168,
+                10,
+                1,
+                0,
+                'Simple File Server',
                 (strftime('%s', 'now'))
             )
             "#
@@ -135,8 +145,7 @@ async fn create_tables(pool: &SqlitePool) -> Result<(), DatabaseError> {
     .await?;
 
     // Create settings table
-    sqlx::query(
-        r#"
+    let settings_table_sql = r#"
         CREATE TABLE IF NOT EXISTS settings (
             id INTEGER PRIMARY KEY CHECK (id = 1),
             max_file_size_bytes INTEGER NOT NULL DEFAULT 52428800,
@@ -147,10 +156,9 @@ async fn create_tables(pool: &SqlitePool) -> Result<(), DatabaseError> {
             ui_brand_name TEXT NOT NULL DEFAULT 'Simple File Server',
             updated_at INTEGER NOT NULL
         )
-        "#,
-    )
-    .execute(pool)
-    .await?;
+        "#;
+
+    sqlx::query(settings_table_sql).execute(pool).await?;
 
     ensure_settings_table_schema(pool).await?;
 

@@ -10,12 +10,15 @@ use tokio::fs;
 use tokio_util::io::ReaderStream;
 use tracing::{error, info, warn};
 
-use crate::{app_state::AppState, files, rate_limit::RateLimitError};
+use crate::{
+    app_state::AppState, files, rate_limit::RateLimitError,
+    server::constants::DEFAULT_PREVIEW_MAX_SIZE_BYTES,
+};
 
 use crate::direct_links::TokenError as DownloadTokenError;
 use crate::server::utils::{
     attach_retry_after, build_content_disposition_header, download_unauthorized_response,
-    file_expired_response, sanitize_filename, server_error_response,
+    file_expired_response, sanitize_filename, server_error_response, ContentDisposition,
 };
 
 pub async fn download_handler(
@@ -185,7 +188,15 @@ pub async fn download_handler(
         });
 
     let download_name = sanitize_filename(Some(&record.original_name));
-    let content_disposition = build_content_disposition_header(&download_name);
+    let size_bytes = record.size_bytes as u64;
+    let preview_allowed = size_bytes <= DEFAULT_PREVIEW_MAX_SIZE_BYTES
+        && files::is_text_mime_type(&record.content_type, &record.original_name);
+    let disposition_mode = if preview_allowed {
+        ContentDisposition::Inline
+    } else {
+        ContentDisposition::Attachment
+    };
+    let content_disposition = build_content_disposition_header(&download_name, disposition_mode);
 
     let mut response = Response::new(Body::from_stream(ReaderStream::new(file)));
     let headers = response.headers_mut();
@@ -196,7 +207,6 @@ pub async fn download_handler(
         HeaderValue::from_static("nosniff"),
     );
 
-    let size_bytes = record.size_bytes as u64;
     if let Ok(value) = HeaderValue::from_str(&size_bytes.to_string()) {
         headers.insert(header::CONTENT_LENGTH, value);
     }

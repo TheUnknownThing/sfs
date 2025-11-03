@@ -16,6 +16,7 @@ use crate::{
     app_state::AppState,
     csrf, files,
     rate_limit::RateLimitError,
+    server::constants::DEFAULT_PREVIEW_MAX_SIZE_BYTES,
     templates::{DirectLinkErrorTemplate, DirectLinkSnippetTemplate, FileTemplate, HtmlTemplate},
 };
 
@@ -94,6 +95,11 @@ pub async fn file_lookup_handler(
     };
 
     let size_display = human_readable_size(size_bytes as u64);
+    let preview_limit = DEFAULT_PREVIEW_MAX_SIZE_BYTES;
+    let preview_blocked_by_size = (size_bytes as u64) > preview_limit;
+    let can_preview =
+        !preview_blocked_by_size && files::is_text_mime_type(&content_type, &original_name);
+    let preview_limit_display = human_readable_size(preview_limit);
     let layout = layout_from_session(&state, &session, "File details").await;
     let can_delete = match layout.current_user.as_ref() {
         Some(user) if user.is_admin => true,
@@ -111,7 +117,14 @@ pub async fn file_lookup_handler(
     )
     .with_content_type(content_type)
     .with_checksum(checksum)
-    .with_delete_permission(can_delete);
+    .with_delete_permission(can_delete)
+    .with_preview_settings(
+        can_preview,
+        preview_limit_display,
+        preview_limit,
+        preview_blocked_by_size,
+    )
+    .with_preview_content("Loading preview...");
 
     HtmlTemplate::new(template).into_response()
 }
