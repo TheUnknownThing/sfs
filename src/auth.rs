@@ -118,7 +118,7 @@ pub async fn verify_password(
     Ok(task::spawn_blocking(move || {
         let parsed_hash = PasswordHash::new(&stored_hash).map_err(AuthError::PasswordHash)?;
         let password_material = combine_password_and_pepper(&password, pepper.as_deref());
-        let verifier = Argon2::default();
+        let verifier = configured_argon2()?;
 
         match verifier.verify_password(password_material.as_bytes(), &parsed_hash) {
             Ok(_) => {

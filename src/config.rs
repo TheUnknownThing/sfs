@@ -1,3 +1,5 @@
+use base64::engine::general_purpose;
+use base64::Engine;
 use config::{Config, ConfigError as BaseConfigError, File};
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -225,25 +227,42 @@ impl AppConfig {
         // Validate security configuration
         // Handle base64: prefix by checking the actual decoded length
         let session_key_len = if self.security.session_key.starts_with("base64:") {
-            self.security.session_key.len() - 7 // Remove "base64:" prefix
+            general_purpose::STANDARD
+                .decode(self.security.session_key.trim_start_matches("base64:"))
+                .map_err(|e| {
+                    ConfigError::Validation(format!("Invalid base64 for SESSION_KEY: {}", e))
+                })?
+                .len()
         } else {
             self.security.session_key.len()
         };
 
         let download_token_len = if self.security.download_token_secret.starts_with("base64:") {
-            self.security.download_token_secret.len() - 7 // Remove "base64:" prefix
+            general_purpose::STANDARD
+                .decode(
+                    self.security
+                        .download_token_secret
+                        .trim_start_matches("base64:"),
+                )
+                .map_err(|e| {
+                    ConfigError::Validation(format!(
+                        "Invalid base64 for DOWNLOAD_TOKEN_SECRET: {}",
+                        e
+                    ))
+                })?
+                .len()
         } else {
             self.security.download_token_secret.len()
         };
 
         if session_key_len < 32 {
             return Err(ConfigError::Validation(
-                "SESSION_KEY must be at least 32 characters".to_string(),
+                "SESSION_KEY must be at least 32 bytes".to_string(),
             ));
         }
         if download_token_len < 32 {
             return Err(ConfigError::Validation(
-                "DOWNLOAD_TOKEN_SECRET must be at least 32 characters".to_string(),
+                "DOWNLOAD_TOKEN_SECRET must be at least 32 bytes".to_string(),
             ));
         }
 
