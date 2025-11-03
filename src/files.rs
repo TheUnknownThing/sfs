@@ -1,4 +1,6 @@
+use mime_guess::{mime, Mime};
 use sqlx::{Executor, SqlitePool};
+use std::str::FromStr;
 
 /// Represents a new file ready to be persisted to the database.
 pub struct NewFileRecord<'a> {
@@ -28,6 +30,21 @@ pub struct FileLookup {
     pub checksum: Option<String>,
     pub created_at: i64,
     pub expires_at: Option<i64>,
+}
+
+/// Determine whether a MIME type should be treated as previewable text content.
+pub fn is_text_mime_type(mime_type: &Option<String>, file_name: &str) -> bool {
+    let explicit = mime_type
+        .as_deref()
+        .and_then(|value| Mime::from_str(value).ok());
+
+    let candidate = explicit.or_else(|| mime_guess::from_path(file_name).first());
+
+    match candidate {
+        Some(mime) if mime.type_() == mime::TEXT => true,
+        Some(mime) => mime.essence_str().eq_ignore_ascii_case("application/json"),
+        None => false,
+    }
 }
 
 /// Lightweight summary of a user's upload for dashboard listings.

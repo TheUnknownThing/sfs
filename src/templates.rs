@@ -297,6 +297,11 @@ pub struct FileTemplate {
     pub content_type: Option<String>,
     pub checksum: Option<String>,
     pub can_delete: bool,
+    pub can_preview: bool,
+    pub preview_max_size_display: String,
+    pub preview_max_size_bytes: u64,
+    pub preview_blocked_by_size: bool,
+    pub preview_content: String,
 }
 
 impl FileTemplate {
@@ -318,6 +323,11 @@ impl FileTemplate {
             content_type: None,
             checksum: None,
             can_delete: false,
+            can_preview: false,
+            preview_max_size_display: String::new(),
+            preview_max_size_bytes: 0,
+            preview_blocked_by_size: false,
+            preview_content: String::new(),
         }
     }
 
@@ -333,6 +343,25 @@ impl FileTemplate {
 
     pub fn with_delete_permission(mut self, allowed: bool) -> Self {
         self.can_delete = allowed;
+        self
+    }
+
+    pub fn with_preview_settings(
+        mut self,
+        can_preview: bool,
+        preview_max_size_display: impl Into<String>,
+        preview_max_size_bytes: u64,
+        preview_blocked_by_size: bool,
+    ) -> Self {
+        self.can_preview = can_preview;
+        self.preview_max_size_display = preview_max_size_display.into();
+        self.preview_max_size_bytes = preview_max_size_bytes;
+        self.preview_blocked_by_size = preview_blocked_by_size;
+        self
+    }
+
+    pub fn with_preview_content(mut self, content: impl Into<String>) -> Self {
+        self.preview_content = content.into();
         self
     }
 }

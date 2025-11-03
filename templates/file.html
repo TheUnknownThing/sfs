@@ -146,6 +146,37 @@ data-[copy-state=copied]:after:whitespace-nowrap" %}
       {% endif %}
     </dl>
 
+    {% if can_preview %}
+    <section class="{{ card_subtle }} space-y-4" id="file-preview">
+      <header class="flex items-center justify-between">
+        <h3 class="flex items-center gap-2 text-lg font-semibold text-white">
+          <i data-feather="eye" class="h-5 w-5"></i>
+          File preview
+        </h3>
+        <button
+          type="button"
+          class="{{ copy_button }}"
+          data-copy
+          data-copy-target="#file-preview-content"
+        >
+          <i data-feather="copy" aria-hidden="true" class="h-4 w-4"></i>
+          Copy
+        </button>
+      </header>
+      <div class="rounded-lg border border-gray-800 bg-gray-950/60 p-4">
+        <pre
+          id="file-preview-content"
+          class="max-h-96 overflow-auto whitespace-pre-wrap break-words font-mono text-sm text-gray-200"
+        >{{ preview_content }}</pre>
+      </div>
+    </section>
+  {% else if preview_blocked_by_size %}
+    <p class="flex items-center gap-2 text-sm text-gray-400">
+      <i data-feather="info" class="h-4 w-4"></i>
+      File too large to preview (limit {{ preview_max_size_display }}).
+    </p>
+    {% endif %}
+
     <footer>
       <div class="button-group flex flex-col gap-3 sm:flex-row">
         <button
@@ -214,6 +245,72 @@ data-[copy-state=copied]:after:whitespace-nowrap" %}
 </section>
 {% endblock %} {% block body_scripts %}
 <script>
+  function activateIcons() {
+    "use strict";
+
+    if (typeof activateFeatherIcons === "function") {
+      activateFeatherIcons();
+    } else if (window.feather) {
+      window.feather.replace();
+    }
+  }
+
+  function resolveCsrfToken(scope) {
+    "use strict";
+
+    const root = scope && typeof scope.querySelector === "function" ? scope : document;
+    const field = root.querySelector('input[name="csrf_token"]');
+    if (field && field.value) {
+      return field.value;
+    }
+
+    const metaToken = document.querySelector('meta[name="csrf-token"]');
+    return metaToken?.getAttribute("content") || "";
+  }
+
+  async function requestDirectLink(code, csrfToken) {
+    "use strict";
+
+    if (!csrfToken) {
+      throw new Error("Missing CSRF token");
+    }
+
+    const payload = new URLSearchParams();
+    payload.set("csrf_token", csrfToken);
+
+    const response = await fetch(`/f/${code}/link`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+      },
+      body: payload.toString(),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to generate download link (status ${response.status})`);
+    }
+
+    const html = (await response.text()).trim();
+    if (!html) {
+      throw new Error("Empty response while generating link");
+    }
+
+    const template = document.createElement("template");
+    template.innerHTML = html;
+    const snippet = template.content.firstElementChild;
+
+    if (!snippet) {
+      throw new Error("Failed to parse download snippet");
+    }
+
+    const linkInput = snippet.querySelector('input[type="text"]');
+    if (!linkInput || !linkInput.value) {
+      throw new Error("Download link missing in response");
+    }
+
+    return { snippet, directUrl: linkInput.value };
+  }
+
   async function handleDownload(event, code) {
     "use strict";
 
@@ -221,62 +318,14 @@ data-[copy-state=copied]:after:whitespace-nowrap" %}
     const originalContent = button.innerHTML;
     const directLinkContainer = document.getElementById("direct-link-output");
 
-    const activateIcons = () => {
-      if (typeof activateFeatherIcons === "function") {
-        activateFeatherIcons();
-      } else if (window.feather) {
-        window.feather.replace();
-      }
-    };
-
     try {
       button.disabled = true;
       button.innerHTML = '<i data-feather="loader"></i> Generating...';
       activateIcons();
 
-      const siblingForm = button
-        .closest(".button-group")
-        ?.querySelector("form");
-      const csrfTokenField = siblingForm?.querySelector(
-        'input[name="csrf_token"]'
-      );
-      const metaToken = document.querySelector('meta[name="csrf-token"]');
-      const csrfToken =
-        csrfTokenField?.value || metaToken?.getAttribute("content") || "";
-
-      if (!csrfToken) {
-        throw new Error("Missing CSRF token");
-      }
-
-      const payload = new URLSearchParams();
-      payload.set("csrf_token", csrfToken);
-
-      const response = await fetch(`/f/${code}/link`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
-        },
-        body: payload.toString(),
-      });
-
-      if (!response.ok) {
-        throw new Error(
-          `Failed to generate download link (status ${response.status})`
-        );
-      }
-
-      const html = (await response.text()).trim();
-      if (!html) {
-        throw new Error("Empty response while generating link");
-      }
-
-      const template = document.createElement("template");
-      template.innerHTML = html;
-      const snippet = template.content.firstElementChild;
-
-      if (!snippet) {
-        throw new Error("Failed to parse download snippet");
-      }
+      const siblingForm = button.closest(".button-group")?.querySelector("form");
+      const csrfToken = resolveCsrfToken(siblingForm);
+      const { snippet, directUrl } = await requestDirectLink(code, csrfToken);
 
       if (directLinkContainer) {
         directLinkContainer.replaceWith(snippet);
@@ -284,14 +333,9 @@ data-[copy-state=copied]:after:whitespace-nowrap" %}
 
       activateIcons();
 
-      const linkInput = snippet.querySelector('input[type="text"]');
-      if (!linkInput || !linkInput.value) {
-        throw new Error("Download link missing in response");
-      }
-
       button.innerHTML = '<i data-feather="check"></i> Downloading...';
       activateIcons();
-      window.location.href = linkInput.value;
+      window.location.href = directUrl;
 
       setTimeout(() => {
         button.disabled = false;
@@ -314,14 +358,6 @@ data-[copy-state=copied]:after:whitespace-nowrap" %}
   function attachDeleteHandlers() {
     "use strict";
 
-    const activateIcons = () => {
-      if (typeof activateFeatherIcons === "function") {
-        activateFeatherIcons();
-      } else if (window.feather) {
-        window.feather.replace();
-      }
-    };
-
     document.querySelectorAll("[data-delete-form]").forEach((form) => {
       form.addEventListener("submit", (event) => {
         const button = form.querySelector("[data-delete-button]");
@@ -343,6 +379,44 @@ data-[copy-state=copied]:after:whitespace-nowrap" %}
     });
   }
 
-  document.addEventListener("DOMContentLoaded", attachDeleteHandlers);
+  async function loadPreview(code) {
+    "use strict";
+
+    const previewContainer = document.getElementById("file-preview-content");
+    if (!previewContainer) {
+      return;
+    }
+
+    try {
+      const csrfToken = resolveCsrfToken();
+      if (!csrfToken) {
+        throw new Error("Missing CSRF token for preview request");
+      }
+
+      const { directUrl } = await requestDirectLink(code, csrfToken);
+      const response = await fetch(directUrl);
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch file content (status ${response.status})`);
+      }
+
+      const content = await response.text();
+      previewContainer.textContent = content;
+    } catch (error) {
+      console.error("Preview loading error:", error);
+      previewContainer.textContent = "Preview unavailable.";
+    } finally {
+      activateIcons();
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    attachDeleteHandlers();
+    if (document.getElementById("file-preview-content")) {
+      loadPreview("{{ code }}").catch((error) => {
+        console.error("Preview init error:", error);
+      });
+    }
+  });
 </script>
 {% endblock %}

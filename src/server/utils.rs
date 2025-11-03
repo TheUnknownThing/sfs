@@ -142,8 +142,15 @@ pub fn sanitize_filename(raw: Option<&str>) -> String {
     cleaned.chars().take(255).collect()
 }
 
-/// Build a Content-Disposition header value for downloads with ASCII fallback.
-pub fn build_content_disposition_header(filename: &str) -> HeaderValue {
+/// Desired presentation mode for `Content-Disposition` headers.
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum ContentDisposition {
+    Attachment,
+    Inline,
+}
+
+/// Build a Content-Disposition header value with ASCII fallback and optional inline behaviour.
+pub fn build_content_disposition_header(filename: &str, mode: ContentDisposition) -> HeaderValue {
     let mut fallback = String::with_capacity(filename.len());
     let mut contains_non_ascii = false;
 
@@ -167,14 +174,24 @@ pub fn build_content_disposition_header(filename: &str) -> HeaderValue {
     let truncated_original: String = filename.chars().take(255).collect();
     let needs_extended = contains_non_ascii || truncated_original.len() != filename.len();
 
-    let header_value = if needs_extended {
-        let encoded = encode_filename_for_rfc5987(&truncated_original);
-        format!("attachment; filename=\"{fallback}\"; filename*=UTF-8''{encoded}")
-    } else {
-        format!("attachment; filename=\"{fallback}\"")
+    let disposition = match mode {
+        ContentDisposition::Attachment => "attachment",
+        ContentDisposition::Inline => "inline",
     };
 
-    HeaderValue::from_str(&header_value).unwrap_or_else(|_| HeaderValue::from_static("attachment"))
+    let header_value = if needs_extended {
+        let encoded = encode_filename_for_rfc5987(&truncated_original);
+        format!("{disposition}; filename=\"{fallback}\"; filename*=UTF-8''{encoded}")
+    } else {
+        format!("{disposition}; filename=\"{fallback}\"")
+    };
+
+    let fallback_header = match mode {
+        ContentDisposition::Attachment => HeaderValue::from_static("attachment"),
+        ContentDisposition::Inline => HeaderValue::from_static("inline"),
+    };
+
+    HeaderValue::from_str(&header_value).unwrap_or(fallback_header)
 }
 
 /// Percent-encode a filename for RFC 5987 usage.
