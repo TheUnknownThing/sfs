@@ -51,7 +51,7 @@ graph TD
 The existing download endpoint will be enhanced to:
 1. Validate the token and retrieve file metadata (reusing existing logic)
 2. Check if file size exceeds preview limit (from settings)
-3. Verify MIME type is a text type (using simplified utility)
+3. Verify MIME type is a text type (using mime_guess utility)
 4. For text files within size limit, set `Content-Disposition: inline` to display in browser
 5. For binary files or files exceeding limit, use existing `Content-Disposition: attachment` behavior
 
@@ -116,25 +116,20 @@ ALTER TABLE settings ADD COLUMN preview_max_size_bytes INTEGER NOT NULL DEFAULT 
 
 ### 3.1 Simplified Text MIME Type Categories
 
-Create utility function `is_text_mime_type` in `src/files.rs`:
+Create utility function `is_text_mime_type` in `src/files.rs` using the existing `mime_guess` crate:
 
 ```rust
-pub fn is_text_mime_type(mime_type: &Option<String>) -> bool {
-    match mime_type.as_deref() {
-        Some(mime) => {
-            // Check for major text families
-            mime.starts_with("text/") ||
-            mime == "application/json" ||
-            mime == "application/xml" ||
-            mime == "application/javascript" ||
-            mime == "application/x-yaml" ||
-            mime == "application/yaml"
-        }
-        None => {
-            // Fallback to file extension check
-            false
-        }
-    }
+use mime_guess::mime;
+
+pub fn is_text_mime_type(mime_type: &Option<String>, file_path: &str) -> bool {
+    // First, try guessing from file extension if no MIME provided
+    let guessed_mime = mime_guess::from_path(file_path);
+    let mime_to_check = mime_type.as_ref().or_else(|| guessed_mime.first());
+
+    mime_to_check.map_or(false, |m| {
+        // Check only for text/* and application/json
+        m.type_() == mime::TEXT || *m == mime::APPLICATION_JSON
+    })
 }
 ```
 
@@ -142,8 +137,8 @@ pub fn is_text_mime_type(mime_type: &Option<String>) -> bool {
 
 For files without MIME type or with generic `application/octet-stream`:
 
-1. Check file extension for common text file extensions (.txt, .md, .json, .xml, .yaml, .js, .csv, etc.)
-2. This provides a reasonable approximation for text file detection
+1. The `mime_guess` crate automatically falls back to extension-based detection for common text and JSON files (.txt, .json, etc.)
+2. This provides a reasonable approximation for the limited preview scope without manual lists
 
 ## 4. Integration with Existing File Details Handler
 
@@ -156,7 +151,7 @@ In `src/server/handlers/files.rs`:
 
 ```rust
 let can_preview = record.size_bytes <= settings.preview_max_size_bytes 
-    && files::is_text_mime_type(&record.content_type);
+    && files::is_text_mime_type(&record.content_type, &record.file_path);
 
 let template = FileTemplate::new(/* ... */)
     .with_can_preview(can_preview)
@@ -324,24 +319,14 @@ The preview functionality follows the same access model as file details:
 ## 8. Implementation Order
 
 1. Add preview size limit to configuration
-2. Create simplified MIME type detection utility
+2. Create MIME type detection utility using mime_guess
 3. Update file details handler to pass preview context
 4. Update FileTemplate structure
 5. Update file.html template with preview section
 6. Add client-side JavaScript for loading preview
-7. Add tests for all functionality
-8. Update database schema with migration
+7. Update database schema with migration
 
-## 9. Testing Strategy
 
-### 9.1 Unit Tests
+## 9. Testing
 
-- Test MIME type detection function with various inputs
-- Test preview endpoint with different file sizes and types
-- Test configuration loading and validation
-
-### 9.2 Integration Tests
-
-- Test full request flow for preview functionality
-- Test template rendering with preview context
-- Test rate limiting behavior
+DO NOT WRITE TESTS
