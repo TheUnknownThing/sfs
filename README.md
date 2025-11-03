@@ -6,11 +6,6 @@ Welcome! This repository contains a Rust-based file sharing server with a clean 
 - Upload files (login required), share a short code, and anyone can fetch a temporary direct link to download.
 - Built with Axum, SQLx (SQLite), Askama, Pico.css, and secure defaults.
 
-## Contributing
-- Propose changes via PR.
-- Keep docs updated when behavior changes.
-- Follow the implementation checkpoints to add features iteratively.
-
 ## Quick Start (Local Development)
 
 1.  **Clone the repository.**
@@ -24,6 +19,10 @@ Welcome! This repository contains a Rust-based file sharing server with a clean 
     echo "DOWNLOAD_TOKEN_SECRET=base64:$(openssl rand -base64 32)" >> .env
     ```
 
+    **Remember:**
+    - Keep these keys secret.
+    - **Remove the existing** `SESSION_KEY` and `DOWNLOAD_TOKEN_SECRET` lines from `.env` after adding the new ones.
+
 3. **Initialize the database:**
     You can use the provided script or manually create the database.
     ```bash
@@ -31,11 +30,15 @@ Welcome! This repository contains a Rust-based file sharing server with a clean 
     sqlite3 data/app.db < sql/schema.sql
     ```
 
+    If you prefer using a different database location, adjust the `DATABASE_URL` in your `.env` file accordingly.
+
 4. **Modify the env accordingly**
    Update the `DATABASE_URL` in your `.env` file to point to the new database location:
    ```bash
-   DATABASE_URL=sqlite:data/app.db?mode=rwc&cache=shared&busy_timeout=5000
+   DATABASE_URL=sqlite:data/app.db?mode=rwc&cache=shared
    ```
+
+   This assumes you are using the above `data/app.db` path. Adjust as necessary. It is also worth noting that you may want need to change the `STORAGE_ROOT` variable to point to a valid directory for uploaded file storage.
 
 5.  **Run the application:**
     ```bash
@@ -61,11 +64,12 @@ Welcome! This repository contains a Rust-based file sharing server with a clean 
     - Set `COOKIE_SECURE=true` if you are running behind a TLS proxy (which is highly recommended).
     - Generate strong, unique values for `SESSION_KEY` and `DOWNLOAD_TOKEN_SECRET` as shown in the "Quick Start" section.
     - Set `BOOTSTRAP_ADMIN_USERNAME` and `BOOTSTRAP_ADMIN_PASSWORD` on the first run to create an initial admin account. **Remove these from the `.env` file after the first run.**
+    - Adjust `DATABASE_URL` and `STORAGE_ROOT` as needed for your production environment.
 
 4.  **Create data directories:**
-    The application needs directories for the database and file storage. By default, it uses `data/` and `storage/`.
+    The application needs directories for the database and file storage. By default, it uses `data/` and `data/storage/`.
     ```bash
-    mkdir -p data storage
+    mkdir -p data/storage
     ```
     Ensure the user running the application has write permissions to these directories.
 
@@ -73,3 +77,6 @@ Welcome! This repository contains a Rust-based file sharing server with a clean 
     ```bash
     ./simple_file_server
     ```
+
+## Licensing
+This project is licensed under the GPLv3 License. See the [LICENSE](LICENSE) file for details.

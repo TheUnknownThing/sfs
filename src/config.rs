@@ -102,7 +102,7 @@ impl AppConfig {
             .set_override(
                 "database.url",
                 std::env::var("DATABASE_URL").unwrap_or_else(|_| {
-                    "sqlite:///data/app.db?mode=rwc&cache=shared&busy_timeout=5000".to_string()
+                    "sqlite:///data/app.db?mode=rwc&cache=shared".to_string()
                 }),
             )?
             .set_override(
@@ -291,7 +291,7 @@ impl Default for AppConfig {
                 port: 8080,
             },
             database: DatabaseConfig {
-                url: "sqlite:///data/app.db?mode=rwc&cache=shared&busy_timeout=5000".to_string(),
+                url: "sqlite:///data/app.db?mode=rwc&cache=shared".to_string(),
                 max_connections: 10,
             },
             storage: StorageConfig {
