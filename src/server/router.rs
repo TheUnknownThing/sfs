@@ -1,3 +1,4 @@
+use axum::extract::DefaultBodyLimit;
 use axum::routing::{get, post};
 use axum::Router;
 use tower::ServiceBuilder;
@@ -24,6 +25,7 @@ pub fn build_router(state: AppState, session_layer: SessionManagerLayer<SqliteSt
             get(handlers::uploads::upload_form_handler)
                 .post(handlers::uploads::upload_submit_handler),
         )
+        .layer(DefaultBodyLimit::max(upload_body_limit as usize))
         .layer(RequestBodyLimitLayer::new(upload_body_limit as usize));
 
     Router::new()
