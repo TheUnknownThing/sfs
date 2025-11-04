@@ -260,6 +260,18 @@ pub const PASTE_LANGUAGES: &[PasteLanguageOption] = &[
         content_type: "text/x-rust",
     },
     PasteLanguageOption {
+        value: "c",
+        label: "C",
+        extension: "c",
+        content_type: "text/x-c",
+    },
+    PasteLanguageOption {
+        value: "go",
+        label: "Go",
+        extension: "go",
+        content_type: "text/x-go",
+    },
+    PasteLanguageOption {
         value: "python",
         label: "Python",
         extension: "py",
@@ -282,6 +294,12 @@ pub const PASTE_LANGUAGES: &[PasteLanguageOption] = &[
         label: "Markdown",
         extension: "md",
         content_type: "text/markdown",
+    },
+    PasteLanguageOption {
+        value: "other",
+        label: "Other",
+        extension: "txt",
+        content_type: "text/plain",
     },
 ];
 

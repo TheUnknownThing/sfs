@@ -101,9 +101,8 @@ impl AppConfig {
             // Database settings
             .set_override(
                 "database.url",
-                std::env::var("DATABASE_URL").unwrap_or_else(|_| {
-                    "sqlite:///data/app.db?mode=rwc&cache=shared".to_string()
-                }),
+                std::env::var("DATABASE_URL")
+                    .unwrap_or_else(|_| "sqlite:///data/app.db?mode=rwc&cache=shared".to_string()),
             )?
             .set_override(
                 "database.max_connections",

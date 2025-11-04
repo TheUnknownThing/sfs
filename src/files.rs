@@ -1,5 +1,6 @@
 use mime_guess::{mime, Mime};
 use sqlx::{Executor, SqlitePool};
+use std::path::Path;
 use std::str::FromStr;
 
 /// Represents a new file ready to be persisted to the database.
@@ -34,17 +35,224 @@ pub struct FileLookup {
 
 /// Determine whether a MIME type should be treated as previewable text content.
 pub fn is_text_mime_type(mime_type: &Option<String>, file_name: &str) -> bool {
-    let explicit = mime_type
+    let mut candidates = Vec::new();
+
+    if let Some(explicit) = mime_type
         .as_deref()
-        .and_then(|value| Mime::from_str(value).ok());
-
-    let candidate = explicit.or_else(|| mime_guess::from_path(file_name).first());
-
-    match candidate {
-        Some(mime) if mime.type_() == mime::TEXT => true,
-        Some(mime) => mime.essence_str().eq_ignore_ascii_case("application/json"),
-        None => false,
+        .and_then(|value| Mime::from_str(value).ok())
+    {
+        candidates.push(explicit);
     }
+
+    candidates.extend(mime_guess::from_path(file_name));
+
+    for mime in candidates {
+        if mime.type_() == mime::TEXT {
+            return true;
+        }
+
+        let essence = mime.essence_str();
+        if is_text_forwarded_mime(essence) {
+            return true;
+        }
+    }
+
+    if let Some(extension) = Path::new(file_name)
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .map(|ext| ext.to_ascii_lowercase())
+    {
+        if is_text_extension(&extension) {
+            return true;
+        }
+    }
+
+    false
+}
+
+fn is_text_forwarded_mime(essence: &str) -> bool {
+    matches!(
+        essence,
+        "application/json"
+            | "application/x-json"
+            | "application/javascript"
+            | "application/x-javascript"
+            | "application/typescript"
+            | "application/x-typescript"
+            | "application/xml"
+            | "application/xhtml+xml"
+            | "application/x-yaml"
+            | "application/yaml"
+            | "application/toml"
+            | "application/x-toml"
+            | "application/x-sh"
+            | "application/x-shellscript"
+            | "application/sql"
+            | "application/graphql"
+            | "application/x-rust"
+            | "text/x-rust"
+            | "text/x-c"
+            | "text/x-csrc"
+            | "text/x-c++"
+            | "text/x-c++src"
+            | "text/x-java-source"
+            | "text/javascript"
+            | "text/typescript"
+            | "text/x-python"
+            | "text/x-go"
+            | "text/x-kotlin"
+            | "text/x-scala"
+            | "text/x-ruby"
+            | "text/x-php"
+            | "text/x-markdown"
+            | "text/markdown"
+            | "text/x-sql"
+            | "text/x-shellscript"
+            | "text/x-yaml"
+            | "text/yaml"
+            | "text/x-toml"
+            | "text/toml"
+            | "text/x-lua"
+            | "text/x-haskell"
+            | "text/x-csharp"
+            | "text/x-kotlin-script"
+            | "text/x-swift"
+            | "text/x-d"
+            | "text/x-elm"
+            | "text/x-erlang"
+            | "text/x-elixir"
+            | "text/x-ocaml"
+            | "text/x-sass"
+            | "text/x-scss"
+            | "text/css"
+            | "text/html"
+            | "text/xml"
+    )
+}
+
+fn is_text_extension(extension: &str) -> bool {
+    matches!(
+        extension,
+        "txt"
+            | "log"
+            | "md"
+            | "markdown"
+            | "mdown"
+            | "mkd"
+            | "mkdn"
+            | "rst"
+            | "adoc"
+            | "asciidoc"
+            | "c"
+            | "h"
+            | "cpp"
+            | "cxx"
+            | "cc"
+            | "hpp"
+            | "hh"
+            | "hxx"
+            | "rs"
+            | "go"
+            | "py"
+            | "pyw"
+            | "rb"
+            | "rbw"
+            | "js"
+            | "mjs"
+            | "cjs"
+            | "ts"
+            | "tsx"
+            | "jsx"
+            | "java"
+            | "kt"
+            | "kts"
+            | "swift"
+            | "scala"
+            | "cs"
+            | "vb"
+            | "php"
+            | "phtml"
+            | "pl"
+            | "pm"
+            | "lua"
+            | "hs"
+            | "erl"
+            | "hrl"
+            | "ex"
+            | "exs"
+            | "clj"
+            | "cljs"
+            | "coffee"
+            | "dart"
+            | "r"
+            | "jl"
+            | "sql"
+            | "csv"
+            | "tsv"
+            | "json"
+            | "json5"
+            | "yaml"
+            | "yml"
+            | "toml"
+            | "ini"
+            | "env"
+            | "conf"
+            | "cfg"
+            | "cnf"
+            | "properties"
+            | "gradle"
+            | "groovy"
+            | "makefile"
+            | "mk"
+            | "cmake"
+            | "dockerfile"
+            | "gitignore"
+            | "editorconfig"
+            | "babelrc"
+            | "babel"
+            | "ps1"
+            | "psm1"
+            | "sh"
+            | "bash"
+            | "zsh"
+            | "fish"
+            | "bat"
+            | "cmd"
+            | "html"
+            | "htm"
+            | "xml"
+            | "xhtml"
+            | "vue"
+            | "svelte"
+            | "css"
+            | "scss"
+            | "less"
+            | "sass"
+            | "tex"
+            | "cls"
+            | "proto"
+            | "graphql"
+            | "mdx"
+            | "prisma"
+            | "sqlx"
+            | "hcl"
+            | "tf"
+            | "tfvars"
+            | "rego"
+            | "nim"
+            | "zig"
+            | "ada"
+            | "ml"
+            | "fs"
+            | "fsi"
+            | "elm"
+            | "cshtml"
+            | "razor"
+            | "liquid"
+            | "haml"
+            | "pug"
+            | "jade"
+    )
 }
 
 /// Lightweight summary of a user's upload for dashboard listings.
