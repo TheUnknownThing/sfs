@@ -57,7 +57,10 @@ data-[copy-state=copied]:after:whitespace-nowrap" %}
     </header>
 
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-      <label for="lookup-code" class="flex items-center gap-2 font-semibold text-sky-200">
+      <label
+        for="lookup-code"
+        class="flex items-center gap-2 font-semibold text-sky-200"
+      >
         <span class="inline-flex items-center gap-2">
           <i data-feather="hash" class="h-4 w-4"></i>
           Code
@@ -153,24 +156,41 @@ data-[copy-state=copied]:after:whitespace-nowrap" %}
           <i data-feather="eye" class="h-5 w-5"></i>
           File preview
         </h3>
-        <button
-          type="button"
-          class="{{ copy_button }}"
-          data-copy
-          data-copy-target="#file-preview-content"
-        >
-          <i data-feather="copy" aria-hidden="true" class="h-4 w-4"></i>
-          Copy
-        </button>
+        <div class="flex gap-2">
+          <button
+            type="button"
+            id="toggle-preview-mode"
+            class="{{ copy_button }}"
+            title="Toggle between Monaco editor and plain text preview"
+          >
+            <i data-feather="code" aria-hidden="true" class="h-4 w-4"></i>
+            <span id="preview-mode-text">Toggle Editor</span>
+          </button>
+          <button
+            type="button"
+            class="{{ copy_button }}"
+            data-copy
+            data-copy-target="#file-preview-content"
+          >
+            <i data-feather="copy" aria-hidden="true" class="h-4 w-4"></i>
+            Copy
+          </button>
+        </div>
       </header>
       <div class="rounded-lg border border-gray-800 bg-gray-950/60 p-4">
+        <div
+          id="monaco-editor-container"
+          style="height: 400px; display: none"
+        ></div>
         <pre
           id="file-preview-content"
           class="max-h-96 overflow-auto whitespace-pre-wrap break-words font-mono text-sm text-gray-200"
-        >{{ preview_content }}</pre>
+        >
+{{ preview_content }}</pre
+        >
       </div>
     </section>
-  {% else if preview_blocked_by_size %}
+    {% else if preview_blocked_by_size %}
     <p class="flex items-center gap-2 text-sm text-gray-400">
       <i data-feather="info" class="h-4 w-4"></i>
       File too large to preview (limit {{ preview_max_size_display }}).
@@ -258,7 +278,8 @@ data-[copy-state=copied]:after:whitespace-nowrap" %}
   function resolveCsrfToken(scope) {
     "use strict";
 
-    const root = scope && typeof scope.querySelector === "function" ? scope : document;
+    const root =
+      scope && typeof scope.querySelector === "function" ? scope : document;
     const field = root.querySelector('input[name="csrf_token"]');
     if (field && field.value) {
       return field.value;
@@ -287,7 +308,9 @@ data-[copy-state=copied]:after:whitespace-nowrap" %}
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to generate download link (status ${response.status})`);
+      throw new Error(
+        `Failed to generate download link (status ${response.status})`
+      );
     }
 
     const html = (await response.text()).trim();
@@ -323,7 +346,9 @@ data-[copy-state=copied]:after:whitespace-nowrap" %}
       button.innerHTML = '<i data-feather="loader"></i> Generating...';
       activateIcons();
 
-      const siblingForm = button.closest(".button-group")?.querySelector("form");
+      const siblingForm = button
+        .closest(".button-group")
+        ?.querySelector("form");
       const csrfToken = resolveCsrfToken(siblingForm);
       const { snippet, directUrl } = await requestDirectLink(code, csrfToken);
 
@@ -379,6 +404,153 @@ data-[copy-state=copied]:after:whitespace-nowrap" %}
     });
   }
 
+  let monacoEditor = null;
+  let isMonacoMode = false;
+  let fileContent = "";
+  let fileLanguage = "plaintext";
+
+  function getMonacoLanguageFromFilename(filename) {
+    const extension = filename.split(".").pop()?.toLowerCase();
+    const languageMap = {
+      js: "javascript",
+      mjs: "javascript",
+      cjs: "javascript",
+      jsx: "javascript",
+      ts: "typescript",
+      tsx: "typescript",
+      py: "python",
+      rs: "rust",
+      go: "go",
+      java: "java",
+      c: "c",
+      h: "c",
+      cpp: "cpp",
+      cxx: "cpp",
+      cc: "cpp",
+      hpp: "cpp",
+      cs: "csharp",
+      php: "php",
+      rb: "ruby",
+      swift: "swift",
+      kt: "kotlin",
+      scala: "scala",
+      html: "html",
+      htm: "html",
+      css: "css",
+      scss: "scss",
+      sass: "sass",
+      less: "less",
+      json: "json",
+      xml: "xml",
+      yaml: "yaml",
+      yml: "yaml",
+      toml: "toml",
+      ini: "ini",
+      sql: "sql",
+      sh: "shell",
+      bash: "shell",
+      zsh: "shell",
+      fish: "shell",
+      ps1: "powershell",
+      dockerfile: "dockerfile",
+      md: "markdown",
+      markdown: "markdown",
+      lua: "lua",
+      r: "r",
+      vue: "html",
+      svelte: "html",
+    };
+
+    return languageMap[extension] || "plaintext";
+  }
+
+  // Load Monaco editor on demand
+  let monacoLoaded = false;
+
+  async function loadMonacoEditor() {
+    if (monacoLoaded) return;
+
+    return new Promise((resolve) => {
+      // Set up Monaco editor
+      require.config({
+        paths: { vs: "https://unpkg.com/monaco-editor@0.52.2/min/vs" },
+      });
+      require(["vs/editor/editor.main"], function () {
+        monacoLoaded = true;
+        resolve();
+      });
+    });
+  }
+
+  async function initializeMonacoEditor(content, filename) {
+    if (monacoEditor) {
+      monacoEditor.dispose();
+    }
+
+    // Load Monaco editor if not already loaded
+    await loadMonacoEditor();
+
+    const container = document.getElementById("monaco-editor-container");
+    if (!container) {
+      return;
+    }
+
+    fileLanguage = getMonacoLanguageFromFilename(filename);
+
+    monacoEditor = monaco.editor.create(container, {
+      value: content,
+      language: fileLanguage,
+      theme: "vs-dark",
+      readOnly: true,
+      minimap: { enabled: false },
+      scrollBeyondLastLine: false,
+      fontSize: 14,
+      lineNumbers: "on",
+      renderWhitespace: "selection",
+      wordWrap: "on",
+      automaticLayout: true,
+    });
+  }
+
+  // Toggle between Monaco editor and plain text preview
+  async function togglePreviewMode() {
+    const monacoContainer = document.getElementById("monaco-editor-container");
+    const plainTextContainer = document.getElementById("file-preview-content");
+    const modeText = document.getElementById("preview-mode-text");
+
+    if (!isMonacoMode) {
+      // Switch to Monaco editor
+      // Initialize Monaco editor on first use
+      if (!monacoEditor) {
+        const toggleButton = document.getElementById("toggle-preview-mode");
+        toggleButton.innerHTML =
+          '<i data-feather="loader" class="h-4 w-4"></i> Loading...';
+        activateIcons();
+
+        await initializeMonacoEditor(fileContent, "{{ original_name }}");
+
+        toggleButton.innerHTML =
+          '<i data-feather="code" class="h-4 w-4"></i> <span id="preview-mode-text">Monaco</span>';
+        activateIcons();
+      }
+
+      monacoContainer.style.display = "block";
+      plainTextContainer.style.display = "none";
+      modeText.textContent = "Monaco";
+      isMonacoMode = true;
+
+      setTimeout(() => {
+        monacoEditor.layout();
+      }, 100);
+    } else {
+      // Switch to plain text
+      monacoContainer.style.display = "none";
+      plainTextContainer.style.display = "block";
+      modeText.textContent = "Toggle Editor";
+      isMonacoMode = false;
+    }
+  }
+
   async function loadPreview(code) {
     "use strict";
 
@@ -397,11 +569,18 @@ data-[copy-state=copied]:after:whitespace-nowrap" %}
       const response = await fetch(directUrl);
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch file content (status ${response.status})`);
+        throw new Error(
+          `Failed to fetch file content (status ${response.status})`
+        );
       }
 
-      const content = await response.text();
-      previewContainer.textContent = content;
+      fileContent = await response.text();
+      previewContainer.textContent = fileContent;
+
+      const toggleButton = document.getElementById("toggle-preview-mode");
+      if (toggleButton) {
+        toggleButton.addEventListener("click", togglePreviewMode);
+      }
     } catch (error) {
       console.error("Preview loading error:", error);
       previewContainer.textContent = "Preview unavailable.";

@@ -21,6 +21,12 @@
       crossorigin="anonymous"
       defer
     ></script>
+    <script
+      src="https://unpkg.com/monaco-editor@0.52.2/min/vs/loader.js"
+      integrity="sha384-pHG02SG8pId94Np3AbPmBEJ1yPqaH0IkJGLSNGXYmuGhkazT8Lr/57WYpbkGjJtu"
+      crossorigin="anonymous"
+      defer
+    ></script>
     {% if let Some(csrf) = layout.csrf %}
     <meta name="csrf-token" content="{{ csrf.token }}" />
     {% endif %} {% block head %}{% endblock %}
