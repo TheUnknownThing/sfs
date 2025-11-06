@@ -177,14 +177,14 @@ data-[copy-state=copied]:after:whitespace-nowrap" %}
           </button>
         </div>
       </header>
-      <div class="rounded-lg border border-gray-800 bg-gray-950/60 p-4">
+      <div class="rounded-lg bg-gray-950/60">
         <div
           id="monaco-editor-container"
           style="height: 400px; display: none"
         ></div>
         <pre
           id="file-preview-content"
-          class="max-h-96 overflow-auto whitespace-pre-wrap break-words font-mono text-sm text-gray-200"
+          class="max-h-96 overflow-auto whitespace-pre-wrap break-words font-mono text-sm text-gray-200 p-4"
         >
 {{ preview_content }}</pre
         >
@@ -407,62 +407,6 @@ data-[copy-state=copied]:after:whitespace-nowrap" %}
   let monacoEditor = null;
   let isMonacoMode = false;
   let fileContent = "";
-  let fileLanguage = "plaintext";
-
-  function getMonacoLanguageFromFilename(filename) {
-    const extension = filename.split(".").pop()?.toLowerCase();
-    const languageMap = {
-      js: "javascript",
-      mjs: "javascript",
-      cjs: "javascript",
-      jsx: "javascript",
-      ts: "typescript",
-      tsx: "typescript",
-      py: "python",
-      rs: "rust",
-      go: "go",
-      java: "java",
-      c: "c",
-      h: "c",
-      cpp: "cpp",
-      cxx: "cpp",
-      cc: "cpp",
-      hpp: "cpp",
-      cs: "csharp",
-      php: "php",
-      rb: "ruby",
-      swift: "swift",
-      kt: "kotlin",
-      scala: "scala",
-      html: "html",
-      htm: "html",
-      css: "css",
-      scss: "scss",
-      sass: "sass",
-      less: "less",
-      json: "json",
-      xml: "xml",
-      yaml: "yaml",
-      yml: "yaml",
-      toml: "toml",
-      ini: "ini",
-      sql: "sql",
-      sh: "shell",
-      bash: "shell",
-      zsh: "shell",
-      fish: "shell",
-      ps1: "powershell",
-      dockerfile: "dockerfile",
-      md: "markdown",
-      markdown: "markdown",
-      lua: "lua",
-      r: "r",
-      vue: "html",
-      svelte: "html",
-    };
-
-    return languageMap[extension] || "plaintext";
-  }
 
   // Load Monaco editor on demand
   let monacoLoaded = false;
@@ -495,11 +439,28 @@ data-[copy-state=copied]:after:whitespace-nowrap" %}
       return;
     }
 
-    fileLanguage = getMonacoLanguageFromFilename(filename);
+    if (monaco.languages && monaco.languages.typescript) {
+      monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
+        noSemanticValidation: true,
+        noSyntaxValidation: true,
+      });
+      monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
+        noSemanticValidation: true,
+        noSyntaxValidation: true,
+      });
+    }
+
+    const modelUri = monaco.Uri.file(filename);
+
+    let model = monaco.editor.getModel(modelUri);
+    if (model) {
+      model.setValue(content);
+    } else {
+      model = monaco.editor.createModel(content, undefined, modelUri);
+    }
 
     monacoEditor = monaco.editor.create(container, {
-      value: content,
-      language: fileLanguage,
+      model: model, // Use the model
       theme: "vs-dark",
       readOnly: false,
       minimap: { enabled: true },
@@ -536,17 +497,23 @@ data-[copy-state=copied]:after:whitespace-nowrap" %}
 
       monacoContainer.style.display = "block";
       plainTextContainer.style.display = "none";
-      modeText.textContent = "Monaco";
+      if (modeText) {
+        modeText.textContent = "Monaco";
+      }
       isMonacoMode = true;
 
       setTimeout(() => {
-        monacoEditor.layout();
+        if (monacoEditor) {
+          monacoEditor.layout();
+        }
       }, 100);
     } else {
       // Switch to plain text
       monacoContainer.style.display = "none";
       plainTextContainer.style.display = "block";
-      modeText.textContent = "Toggle Editor";
+      if (modeText) {
+        modeText.textContent = "Toggle Editor";
+      }
       isMonacoMode = false;
     }
   }
