@@ -1,0 +1,33 @@
+version: "3.9"
+
+services:
+  app:
+    image: ghcr.io/theunknownthing/sfs:latest
+    build:
+      context: .
+      target: runtime
+    restart: unless-stopped
+    environment:
+      RUST_LOG: ${RUST_LOG:-info}
+      SERVER_PORT: 8080
+      DATABASE_URL: sqlite:////data/app.db?mode=rwc&cache=shared
+      STORAGE_ROOT: /data/storage
+      SESSION_KEY: ${SESSION_KEY:?SESSION_KEY is required}
+      DOWNLOAD_TOKEN_SECRET: ${DOWNLOAD_TOKEN_SECRET:?DOWNLOAD_TOKEN_SECRET is required}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-10.0.0.0/8,192.168.0.0/16,172.16.0.0/12,127.0.0.1/32}
+    volumes:
+      - sfs-db:/data
+      - sfs-storage:/data/storage
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/ >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  sfs-db:
+  sfs-storage:
