@@ -1,0 +1,19 @@
+# Build artifacts
+/target
+
+# Git & CI
+/.git
+/.github
+
+# Local runtime data
+/data
+/storage
+/sqlx-tmp
+
+# IDE & tooling
+/.vscode
+/.idea
+**/*.swp
+
+# Misc
+.env

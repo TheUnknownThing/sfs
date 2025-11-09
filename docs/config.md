@@ -6,7 +6,7 @@ Centralized configuration combines environment variables, a default config schem
 - SERVER_BIND_ADDR: default `0.0.0.0`
 - SERVER_PORT: default `8080`
 - RUST_LOG: default `info,simple_file_server=info`
-- DATABASE_URL: e.g. `sqlite:///data/app.db?mode=rwc&cache=shared&busy_timeout=5000`
+- DATABASE_URL: e.g. `sqlite:///data/app.db?mode=rwc&cache=shared`
 - STORAGE_ROOT: e.g. `/data/storage` (must be writable)
 - SESSION_KEY: base64 or hex 32-byte secret for session encryption/signing (generated securely)
 - DOWNLOAD_TOKEN_SECRET: 32+ random bytes, base64 or hex
@@ -33,7 +33,7 @@ Settings defaults (overridable in DB via `/settings`):
 SERVER_BIND_ADDR=0.0.0.0
 SERVER_PORT=8080
 RUST_LOG=info,simple_file_server=info
-DATABASE_URL=sqlite:///data/app.db?mode=rwc&cache=shared&busy_timeout=5000
+DATABASE_URL=sqlite:///data/app.db?mode=rwc&cache=shared
 STORAGE_ROOT=/data/storage
 SESSION_KEY=base64:WmVkM0pYME1hZ0ZyQ29vbFNlY3JldEJpdGVzMTIzNA==
 DOWNLOAD_TOKEN_SECRET=base64:bS9wS1l1d0pzcG1SSG9vQmFyU2VjcmV0S2V5LTIzNDU2

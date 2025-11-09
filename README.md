@@ -45,6 +45,29 @@ Welcome! This repository contains a Rust-based file sharing server with a clean 
     cargo run
     ```
 
+## Quick Start (Docker)
+
+1. **Set secrets:** Create a `.env` file (or export the variables in your shell) with values for `SESSION_KEY` and `DOWNLOAD_TOKEN_SECRET`. Example:
+    ```bash
+    export SESSION_KEY="base64:$(openssl rand -base64 32)"
+    export DOWNLOAD_TOKEN_SECRET="base64:$(openssl rand -base64 32)"
+    ```
+
+2. **Build and start the container:** The repository ships with a production-focused image that exposes port 8080.
+    ```bash
+    docker compose up --build
+    ```
+
+    The application listens on `http://localhost:8080`. Named volumes store the SQLite database and uploaded files so restarts retain data.
+
+    Looking for TLS termination? Sample `deploy/Caddyfile` and `deploy/nginx.conf` configs are included, but you decide if and how to run a reverse proxy.
+
+3. **Use the published image:** Once a GitHub release is published, an image is pushed to `ghcr.io/theunknownthing/sfs`. Pull it directly:
+    ```bash
+    docker pull ghcr.io/theunknownthing/sfs:latest
+    ```
+    You can swap the `build` section in `docker-compose.yml` with that image for faster deployments.
+
 ## Deployment (Production)
 
 1.  **Build the release binary:**

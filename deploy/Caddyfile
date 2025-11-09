@@ -1,0 +1,24 @@
+{$SFS_DOMAIN:files.local} {
+	encode zstd gzip
+	tls {$SFS_TLS_EMAIL:internal}
+
+	@static path /static/*
+	handle @static {
+		respond 404
+	}
+
+	handle {
+		header {
+			Strict-Transport-Security "max-age=31536000; includeSubDomains"
+			X-Content-Type-Options "nosniff"
+			X-Frame-Options "DENY"
+			Referrer-Policy "no-referrer"
+		}
+
+		reverse_proxy app:8080
+	}
+}
+
+:80 {
+	redir https://{$SFS_DOMAIN:files.local}{uri}
+}

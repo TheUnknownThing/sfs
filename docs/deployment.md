@@ -3,80 +3,33 @@
 This guide covers containerized and bare-metal/systemd deployments with reverse proxy and TLS.
 
 ## Container image (Dockerfile outline)
-Use a small, static binary for reliability. Example multi-stage:
+The root `Dockerfile` builds a musl-linked binary in a multi-stage pipeline and ships a minimal Alpine runtime. It configures sane defaults for running inside the container, drops privileges via `su-exec`, and exposes a health check using `wget`.
 
-```
-# Build stage
-FROM rust:1.81-bullseye AS builder
-WORKDIR /app
-# Install SQLx CLI offline cache optionally if needed for compile-time checks
-# COPY sqlx-data.json ./sqlx-data.json
-COPY . .
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/app/target \
-    cargo build --release
+Highlights:
+- Builder stage installs only the toolchains required to compile the release artifact with `SQLX_OFFLINE=true`.
+- Runtime stage adds `wget`, `sqlite-libs`, and `su-exec`, creates the `/data` hierarchy, and declares volumes for both the SQLite database and uploaded files.
+- Health checks probe `http://127.0.0.1:8080/` every 30 seconds.
 
-# Runtime stage
-FROM gcr.io/distroless/cc-debian12
-USER 10001:10001
-WORKDIR /app
-COPY --from=builder /app/target/release/simple_file_server /app/simple_file_server
-# Create writable dirs via volumes (storage, db)
-VOLUME ["/data/storage", "/data"]
-ENV RUST_LOG=info \
-    SERVER_BIND_ADDR=0.0.0.0 \
-    SERVER_PORT=8080 \
-    DATABASE_URL=sqlite:////data/app.db?mode=rwc&cache=shared&busy_timeout=5000 \
-    STORAGE_ROOT=/data/storage \
-    COOKIE_SECURE=true
-EXPOSE 8080
-ENTRYPOINT ["/app/simple_file_server"]
-```
-
-Notes:
-- Use `distroless` or `alpine:3` if you need a shell (distroless has no shell).
-- Ensure `STORAGE_ROOT` and DB path are persistent volumes.
+See `Dockerfile` for the exact implementation.
 
 ## Docker Compose
 
-```
-services:
-  app:
-    image: ghcr.io/yourorg/simple-file-server:latest
-    environment:
-      - RUST_LOG=info
-      - SERVER_PORT=8080
-      - DATABASE_URL=sqlite:////data/app.db?mode=rwc&cache=shared&busy_timeout=5000
-      - STORAGE_ROOT=/data/storage
-      - SESSION_KEY=${SESSION_KEY}
-      - DOWNLOAD_TOKEN_SECRET=${DOWNLOAD_TOKEN_SECRET}
-      - COOKIE_SECURE=true
-    volumes:
-      - sfs-db:/data
-      - sfs-storage:/data/storage
-    ports:
-      - "8080:8080"
-    healthcheck:
-      test: ["CMD", "/bin/sh", "-c", "wget -qO- http://localhost:8080/ | head -n1 >/dev/null"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-volumes:
-  sfs-db: {}
-  sfs-storage: {}
-```
+The repository ships with `docker-compose.yml` which:
+- Builds (or pulls) the production image for the `app` service.
+- Mounts two named volumes: `sfs-db` for the SQLite database at `/data/app.db` and `sfs-storage` for user uploads under `/data/storage`.
+- Exposes port `8080` and wires a `CMD-SHELL` health check hitting `/`.
+
+Environment variables for cryptographic secrets (`SESSION_KEY`, `DOWNLOAD_TOKEN_SECRET`) are surfaced as required placeholders so the stack refuses to start without them. Attach your own reverse proxy or load balancer as needed (examples below).
 
 ## Reverse proxy
 
 ### Caddy (recommended)
-```
-:80 {
-  redir https://{host}{uri}
-}
+`deploy/Caddyfile` mirrors the example below with minor tweaks so you can parameterise the domain and ACME behaviour via environment variables (`SFS_DOMAIN`, `SFS_TLS_EMAIL`). By default it uses Caddy's internal CA; set `SFS_TLS_EMAIL` to a real address when you are ready to request public certificates. Mount this file into your own Caddy container if you want automatic TLS.
 
-:443 {
+```
+{$SFS_DOMAIN:files.local} {
   encode zstd gzip
-  tls you@example.com
+  tls {$SFS_TLS_EMAIL:internal}
   @static path /static/*
   handle @static {
     respond 404
@@ -91,21 +44,27 @@ volumes:
     reverse_proxy app:8080
   }
 }
+
+:80 {
+  redir https://{$SFS_DOMAIN:files.local}{uri}
+}
 ```
 
 ### Nginx
+`deploy/nginx.conf` is a drop-in configuration that aligns with the guidance below and expects certificates issued by Let's Encrypt (or equivalent) in `/etc/letsencrypt`). Run it alongside the app if you prefer Nginx over Caddy.
+
 ```
 server {
   listen 80;
-  server_name files.example.com;
+  server_name ${SFS_DOMAIN};
   return 301 https://$host$request_uri;
 }
 
 server {
   listen 443 ssl http2;
-  server_name files.example.com;
-  ssl_certificate /etc/letsencrypt/live/files.example.com/fullchain.pem;
-  ssl_certificate_key /etc/letsencrypt/live/files.example.com/privkey.pem;
+  server_name ${SFS_DOMAIN};
+  ssl_certificate /etc/letsencrypt/live/${SFS_DOMAIN}/fullchain.pem;
+  ssl_certificate_key /etc/letsencrypt/live/${SFS_DOMAIN}/privkey.pem;
 
   client_max_body_size 200m;  # set >= MAX_FILE_SIZE_BYTES
 
@@ -131,7 +90,7 @@ User=sfs
 Group=sfs
 Environment=RUST_LOG=info
 Environment=SERVER_PORT=8080
-Environment=DATABASE_URL=sqlite:////var/lib/sfs/app.db?mode=rwc&cache=shared&busy_timeout=5000
+Environment=DATABASE_URL=sqlite:////var/lib/sfs/app.db?mode=rwc&cache=shared
 Environment=STORAGE_ROOT=/var/lib/sfs/storage
 Environment=SESSION_KEY=base64:...
 Environment=DOWNLOAD_TOKEN_SECRET=base64:...
