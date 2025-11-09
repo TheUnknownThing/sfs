@@ -10,12 +10,10 @@ RUN apk add --no-cache \
         build-base \
         openssl-dev \
         sqlite-dev \
+        sqlite \
         pkgconfig
 
 WORKDIR /app
-
-# Enable SQLx offline mode so the build does not require a live database
-ENV SQLX_OFFLINE=true
 
 # Build for musl so the resulting binary works on Alpine
 RUN rustup target add x86_64-unknown-linux-musl
@@ -29,6 +27,12 @@ RUN mkdir -p src \
 
 # Copy the remainder of the source code
 COPY . .
+
+# Create a temporary database for the build
+RUN mkdir -p /tmp/sqlx-tmp && \
+    sqlite3 /tmp/sqlx-tmp/temp.db < sql/schema.sql
+
+ENV DATABASE_URL=sqlite:///tmp/sqlx-tmp/temp.db
 
 # Compile the application
 RUN cargo build --locked --release --target x86_64-unknown-linux-musl
