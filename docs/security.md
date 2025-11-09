@@ -10,7 +10,7 @@ This document describes the security controls that exist in the Simple File Serv
   - Rate limits by IP and by normalized username to 5 attempts per minute each.
   - Invalid attempts incur a randomized 150-300 ms backoff (`randomized_backoff`) to slow brute force attacks.
   - CSRF token validation happens before any credential checks. On success the session ID is rotated to prevent fixation, the last-login timestamp is updated, and passwords are rehashed if necessary.
-- Registration mirrors the same CSRF handling and password policy, is controlled by the `allow_registration` setting, and is rate limited to 1 request per IP per minute. Newly registered users are signed in immediately with a rotated session ID.
+- Registration mirrors the same CSRF handling and password policy, is disabled by default via the settings table, and is rate limited to 1 request per IP per minute. Newly registered users are signed in immediately with a rotated session ID.
 - Administrative access is guarded in `server/handlers/shared.rs::require_admin`. Only accounts with `is_admin = 1` may hit `/settings` and `/admin/*` routes.
 - On first boot the application calls `bootstrap_admin_user`. If the `users` table is empty and both `BOOTSTRAP_ADMIN_USERNAME` and `BOOTSTRAP_ADMIN_PASSWORD` are set, a single admin is created with full validation and hashing.
 
@@ -18,11 +18,11 @@ This document describes the security controls that exist in the Simple File Serv
 - Sessions are provided by `tower-sessions` backed by the SQLite store in the `tower_sessions` table. Each record contains opaque serialized state plus `expiry_date` managed by the library.
 - Cookies are issued under the host-only name `__Host.sfs.sid` with `Path=/`, `HttpOnly`, and `SameSite=Lax`. The `Secure` flag is controlled by `COOKIE_SECURE`; set it to `true` in production so browsers refuse plaintext transport.
 - The configuration layer will not start unless `SESSION_KEY` is at least 32 bytes (base64 accepted). This guard ensures we always have high-entropy material available for key management.
-- Session IDs are rotated on login, registration, logout, and after any CSRF validation failure. Logout also clears the stored user and rotates the CSRF token to invalidate existing forms.
-- Tower Sessions v0.11 applies its default TTL to all sessions (24 hours at the time of writing). The background cleanup job removes expired rows so abandoned sessions cannot be reused.
+- Session IDs are rotated on login, registration, and logout. Logout also clears the stored user and rotates the CSRF token to invalidate existing forms.
+- Tower Sessions v0.11 applies its default TTL to all sessions (24 hours at the time of writing). The background cleanup job removes expired rows so abandoned sessions cannot be reused. The `SESSION_MAX_AGE_HOURS` field in `AppConfig` is present for future tuning but is not yet wired into the session layer.
 
 ## CSRF Protection
-- `csrf.rs` issues a 64-character nanoid per session and stores it server-side. Tokens are generated lazily via `ensure_csrf_token` and rotated after login, logout, successful uploads/pastes, registration, settings saves, user management actions, and any validation failure.
+- `csrf.rs` issues a 64-character nanoid per session and stores it server-side. Tokens are generated lazily via `ensure_csrf_token` and rotated after login, logout, successful uploads, registration, settings saves, and any validation failure.
 - All forms that mutate state must include `<input name="csrf_token">`. Handlers call `validate_csrf_token`, which compares the provided token with constant-time equality and rejects missing or mismatched tokens.
 - The base layout exposes the token in a `<meta>` tag for JavaScript clients. HTMX requests automatically add an `X-CSRF-Token` header, and the file preview scripts read the hidden field before making `fetch` requests.
 
@@ -42,10 +42,10 @@ This document describes the security controls that exist in the Simple File Serv
 - Tokens are not yet bound to client IPs or marked single-use; if you need those properties add them to `DownloadTokenClaims` and the backing cache.
 
 ## File & Paste Handling
-- Uploads (`server/handlers/uploads.rs`) and pastes (`server/handlers/paste.rs`) require an authenticated session. Both stream content directly to disk using a temporary `.uploading` file, enforce the current `max_file_size_bytes`, and remove any partially written blobs if limits are exceeded or IO fails.
+- Uploads (`server/handlers/uploads.rs`) and pastes (`server/handlers/paste.rs`) require an authenticated session. Both stream multipart content directly to disk using a temporary `.uploading` file, enforce the current `max_file_size_bytes`, and remove any partially written blobs if limits are exceeded or IO fails.
 - Stored files live under `storage/<YYYY>/<MM>/<DD>/<ULID>`; the ULID is generated server-side and recorded in the database. User-supplied filenames are kept only as metadata. `sanitize_filename` strips dangerous characters, truncates to 255 bytes, and falls back to a safe name when needed.
 - Each record includes a SHA-256 checksum for later integrity checks. For pastes we also normalize the extension based on the selected language to keep previews coherent.
-- Download responses set `Content-Type` using the stored value (falling back to `mime_guess`), emit `Content-Disposition` with proper ASCII fallback and RFC 5987 encoding, and always include `X-Content-Type-Options: nosniff`. Text files up to the configured preview size limit are rendered inline to support the preview tooling; larger or non-text files are forced to download.
+- Download responses set `Content-Type` using the stored value (falling back to `mime_guess`), emit `Content-Disposition` with proper ASCII fallback and RFC 5987 encoding, and always include `X-Content-Type-Options: nosniff`. Text files up to 1 MiB are rendered inline to support the preview tooling; larger or non-text files are forced to download.
 - Deletions require ownership or admin privileges, run within a `BEGIN IMMEDIATE` transaction, and remove the on-disk blob after the database commit. Missing blobs are logged but not treated as fatal.
 
 ## Transport & Deployment Expectations
@@ -58,12 +58,11 @@ This document describes the security controls that exist in the Simple File Serv
 - Tokens and IDs are parsed with explicit Base64 and UTF-8 checks (`direct_links.rs`). Any decoding failure results in a rejected request.
 - Settings, upload, and paste forms validate numeric ranges against the constants in `server/constants.rs`. Attempting to exceed configured bounds yields helpful form errors.
 - Usernames are stored lowercase to prevent impersonation via case differences.
-- Paste content is validated for size limits and language selection.
 
 ## Background Cleanup & Data Lifecycle
 - `cleanup::spawn_cleanup_job` runs every 15 minutes. It removes expired file records in batches of 100, deletes the associated blobs, and logs any missing files for investigation.
 - The same task also prunes expired sessions from `tower_sessions`, ensuring abandoned cookies cannot be replayed after expiry.
-- File expirations are derived from per-upload/paste selections or the application defaults (configurable via the settings UI or `DEFAULT_EXPIRATION_HOURS`).
+- File expirations are derived from per-upload selections or the application defaults (configurable via the settings UI or `DEFAULT_EXPIRATION_HOURS`).
 
 ## Logging & Auditability
 - Structured logging is powered by `tracing`. Events record user IDs, usernames, IP addresses, and file codes where needed, but never include passwords, raw tokens, or file contents.
@@ -86,4 +85,3 @@ This document describes the security controls that exist in the Simple File Serv
 - `TRUSTED_PROXIES` is parsed but unused. Introduce middleware to enforce it before trusting forwarded headers.
 - A global Content-Security-Policy is not emitted by the application. Configure one at the proxy or contribute server support.
 - Session lifetime is controlled by the library default. Wire `SESSION_MAX_AGE_HOURS` through `tower-sessions` if you need explicit control.
-- Consider adding IP binding to download tokens for additional security.
