@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   app:
-    image: ghcr.io/theunknownthing/simple_file_server:latest
+    image: ghcr.io/theunknownthing/sfs:latest
     build:
       context: .
       target: runtime
