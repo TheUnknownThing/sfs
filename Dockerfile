@@ -3,7 +3,7 @@
 ########################################
 # Builder                                                               #
 ########################################
-FROM rust:1.81-alpine3.19 AS builder
+FROM rust:1.88-alpine3.20 AS builder
 
 # Allow incremental builds to reuse dependencies
 RUN apk add --no-cache \
@@ -22,7 +22,10 @@ RUN rustup target add x86_64-unknown-linux-musl
 
 # Pre-fetch dependencies to maximise layer caching
 COPY Cargo.toml Cargo.lock ./
-RUN cargo fetch --target x86_64-unknown-linux-musl
+RUN mkdir -p src \
+    && printf "fn main() {}\n" > src/main.rs \
+    && cargo fetch --target x86_64-unknown-linux-musl \
+    && rm -rf src
 
 # Copy the remainder of the source code
 COPY . .
