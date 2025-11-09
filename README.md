@@ -1,10 +1,11 @@
 # Simple File Server
 
-Welcome! This repository contains a Rust-based file sharing server with a clean web UI, short file codes, and temporary direct download links.
+Welcome! This repository contains a Rust-based file sharing and paste server with a clean web UI, short file codes, temporary direct download links.
 
 ## What is this?
-- Upload files (login required), share a short code, and anyone can fetch a temporary direct link to download.
+- Upload files and create text pastes (login required), share a short code, and anyone can fetch a temporary direct link to download.
 - Built with Axum, SQLx (SQLite), Askama, Pico.css, and secure defaults.
+- Features include user management, registration control, paste syntax highlighting, file preview, and comprehensive rate limiting.
 
 ## Quick Start (Local Development)
 
@@ -81,7 +82,7 @@ Welcome! This repository contains a Rust-based file sharing server with a clean 
 
 3.  **Configure the application:**
     Create a `.env` file in the same directory as the binary. Start by copying the contents of `.env.example`.
-
+    
     **Important:**
     - Set `SERVER_BIND_ADDR` to `0.0.0.0` to listen on all network interfaces.
     - Set `COOKIE_SECURE=true` if you are running behind a TLS proxy (which is highly recommended).
@@ -101,5 +102,18 @@ Welcome! This repository contains a Rust-based file sharing server with a clean 
     ./simple_file_server
     ```
 
+## Documentation
+
+Comprehensive documentation is available in the `docs/` directory:
+
+- [`docs/README.md`](docs/README.md) - Overview and architecture
+- [`docs/api.md`](docs/api.md) - HTTP API and routes
+- [`docs/architecture.md`](docs/architecture.md) - Technical architecture
+- [`docs/config.md`](docs/config.md) - Configuration options
+- [`docs/security.md`](docs/security.md) - Security controls
+- [`docs/data-model.md`](docs/data-model.md) - Database schema
+- [`docs/deployment.md`](docs/deployment.md) - Deployment guide
+
 ## Licensing
+
 This project is licensed under the GPLv3 License. See the [LICENSE](LICENSE) file for details.

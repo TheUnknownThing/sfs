@@ -2,13 +2,14 @@
 
 This guide covers containerized and bare-metal/systemd deployments with reverse proxy and TLS.
 
-## Container image (Dockerfile outline)
+## Container image (Dockerfile)
 The root `Dockerfile` builds a musl-linked binary in a multi-stage pipeline and ships a minimal Alpine runtime. It configures sane defaults for running inside the container, drops privileges via `su-exec`, and exposes a health check using `wget`.
 
 Highlights:
 - Builder stage installs only the toolchains required to compile the release artifact with `SQLX_OFFLINE=true`.
 - Runtime stage adds `wget`, `sqlite-libs`, and `su-exec`, creates the `/data` hierarchy, and declares volumes for both the SQLite database and uploaded files.
 - Health checks probe `http://127.0.0.1:8080/` every 30 seconds.
+- Uses non-root user with proper permissions.
 
 See `Dockerfile` for the exact implementation.
 
@@ -18,8 +19,7 @@ The repository ships with `docker-compose.yml` which:
 - Builds (or pulls) the production image for the `app` service.
 - Mounts two named volumes: `sfs-db` for the SQLite database at `/data/app.db` and `sfs-storage` for user uploads under `/data/storage`.
 - Exposes port `8080` and wires a `CMD-SHELL` health check hitting `/`.
-
-Environment variables for cryptographic secrets (`SESSION_KEY`, `DOWNLOAD_TOKEN_SECRET`) are surfaced as required placeholders so the stack refuses to start without them. Attach your own reverse proxy or load balancer as needed (examples below).
+- Environment variables for cryptographic secrets (`SESSION_KEY`, `DOWNLOAD_TOKEN_SECRET`) are surfaced as required placeholders so the stack refuses to start without them. Attach your own reverse proxy or load balancer as needed (examples below).
 
 ## Reverse proxy
 
@@ -94,6 +94,7 @@ Environment=DATABASE_URL=sqlite:////var/lib/sfs/app.db?mode=rwc&cache=shared
 Environment=STORAGE_ROOT=/var/lib/sfs/storage
 Environment=SESSION_KEY=base64:...
 Environment=DOWNLOAD_TOKEN_SECRET=base64:...
+Environment=COOKIE_SECURE=true
 ExecStart=/usr/local/bin/simple_file_server
 Restart=always
 NoNewPrivileges=true
@@ -111,16 +112,28 @@ Create directories and permissions:
 
 ## Database migrations
 - Executed at startup via `sqlx::migrate!()`; ensure app has write permission to DB path.
+- Automatic schema updates on application restart.
 
 ## Backups
 - Quiesce DB with `sqlite3 /path/app.db ".backup /backup/app-$(date +%F).db"` or `VACUUM INTO`.
 - Snapshot the storage directory concurrently.
+- Consider excluding `tower_sessions` table from backups as it contains transient data.
 
 ## Observability
-- Logs: stdout; use JSON in prod if desired.
+- Logs: stdout; use JSON in prod if desired (`LOG_JSON=true`).
+- Structured logging with tracing for better observability.
 - Metrics (optional): expose Prometheus via `metrics` + `axum-prometheus`.
 
 ## Sizing & limits
 - Ensure reverse proxy `client_max_body_size` >= MAX_FILE_SIZE_BYTES.
 - Tune read/write timeouts for large uploads/downloads.
 - Disk capacity monitoring for STORAGE_ROOT.
+- Memory usage monitoring for paste preview functionality.
+
+## Production considerations
+- Set `COOKIE_SECURE=true` when using HTTPS.
+- Use strong secrets for `SESSION_KEY` and `DOWNLOAD_TOKEN_SECRET`.
+- Configure proper backup retention policies.
+- Monitor disk space and cleanup job effectiveness.
+- Consider log rotation for long-running deployments.
+- Set up monitoring for application health and performance.
