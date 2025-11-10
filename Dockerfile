@@ -71,14 +71,10 @@ ENV RUST_LOG=info \
 
 # Copy the release binary from the builder stage
 ARG TARGETARCH
-RUN echo "TARGETARCH is $TARGETARCH" && \
-    ls -la /app/target/ && \
-    if [ "$TARGETARCH" = "arm64" ]; then \
-        ls -la /app/target/aarch64-unknown-linux-musl/release/ && \
-        cp /app/target/aarch64-unknown-linux-musl/release/simple_file_server /app/simple_file_server; \
-    else \
-        ls -la /app/target/x86_64-unknown-linux-musl/release/ && \
-        cp /app/target/x86_64-unknown-linux-musl/release/simple_file_server /app/simple_file_server; \
+COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/simple_file_server /app/simple_file_server
+COPY --from=builder /app/target/aarch64-unknown-linux-musl/release/simple_file_server /app/simple_file_server_arm64
+RUN if [ "$TARGETARCH" = "arm64" ]; then \
+        mv /app/simple_file_server_arm64 /app/simple_file_server; \
     fi
 
 # Copy entrypoint (added separately) to drop privileges after ensuring writable volumes
