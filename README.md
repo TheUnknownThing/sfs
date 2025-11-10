@@ -1,5 +1,7 @@
 # Simple File Server
 
+[![Publish Docker Image](https://github.com/TheUnknownThing/sfs/actions/workflows/docker-release.yml/badge.svg)](https://github.com/TheUnknownThing/sfs/actions/workflows/docker-release.yml) [![Build and Release](https://github.com/TheUnknownThing/sfs/actions/workflows/build.yml/badge.svg)](https://github.com/TheUnknownThing/sfs/actions/workflows/build.yml)
+
 Welcome! This repository contains a Rust-based file sharing and paste server with a clean web UI, short file codes, temporary direct download links.
 
 ## What is this?

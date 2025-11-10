@@ -90,7 +90,7 @@ User=sfs
 Group=sfs
 Environment=RUST_LOG=info
 Environment=SERVER_PORT=8080
-Environment=DATABASE_URL=sqlite:////var/lib/sfs/app.db?mode=rwc&cache=shared
+Environment=DATABASE_URL=sqlite:///var/lib/sfs/app.db?mode=rwc&cache=shared
 Environment=STORAGE_ROOT=/var/lib/sfs/storage
 Environment=SESSION_KEY=base64:...
 Environment=DOWNLOAD_TOKEN_SECRET=base64:...
