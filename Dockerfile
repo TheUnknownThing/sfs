@@ -17,13 +17,13 @@ RUN apk add --no-cache \
 WORKDIR /app
 
 # Build for musl so the resulting binary works on Alpine for both architectures
-RUN rustup target add x86_64-unknown-linux-musl aarch64-unknown-linux-musl
+RUN rustup target add x86_64-unknown-linux-musl
 
 # Pre-fetch dependencies to maximise layer caching
 COPY Cargo.toml Cargo.lock ./
 RUN mkdir -p src \
     && printf "fn main() {}\n" > src/main.rs \
-    && cargo fetch --target x86_64-unknown-linux-musl --target aarch64-unknown-linux-musl \
+    && cargo fetch --target x86_64-unknown-linux-musl \
     && rm -rf src
 
 # Copy the remainder of the source code
@@ -37,11 +37,7 @@ ENV DATABASE_URL=sqlite:///tmp/sqlx-tmp/temp.db
 
 # Compile the application for the target architecture
 ARG TARGETARCH
-RUN if [ "$TARGETARCH" = "arm64" ]; then \
-        cargo build --locked --release --target aarch64-unknown-linux-musl; \
-    else \
-        cargo build --locked --release --target x86_64-unknown-linux-musl; \
-    fi
+RUN cargo build --locked --release --target x86_64-unknown-linux-musl;
 
 ########################################
 # Runtime                                                               #
@@ -65,17 +61,13 @@ WORKDIR /app
 ENV RUST_LOG=info \
     SERVER_BIND_ADDR=0.0.0.0 \
     SERVER_PORT=8080 \
-    DATABASE_URL=sqlite:////data/app.db?mode=rwc&cache=shared \
+    DATABASE_URL=sqlite:///data/app.db?mode=rwc&cache=shared \
     STORAGE_ROOT=/data/storage \
     COOKIE_SECURE=true
 
 # Copy the release binary from the builder stage
 ARG TARGETARCH
 COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/simple_file_server /app/simple_file_server
-COPY --from=builder /app/target/aarch64-unknown-linux-musl/release/simple_file_server /app/simple_file_server_arm64
-RUN if [ "$TARGETARCH" = "arm64" ]; then \
-        mv /app/simple_file_server_arm64 /app/simple_file_server; \
-    fi
 
 # Copy entrypoint (added separately) to drop privileges after ensuring writable volumes
 COPY docker/entrypoint.sh /entrypoint.sh

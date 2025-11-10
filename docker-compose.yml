@@ -10,7 +10,7 @@ services:
     environment:
       RUST_LOG: ${RUST_LOG:-info}
       SERVER_PORT: 8080
-      DATABASE_URL: sqlite:////data/app.db?mode=rwc&cache=shared
+      DATABASE_URL: sqlite:///data/app.db?mode=rwc&cache=shared
       STORAGE_ROOT: /data/storage
       SESSION_KEY: ${SESSION_KEY:?SESSION_KEY is required}
       DOWNLOAD_TOKEN_SECRET: ${DOWNLOAD_TOKEN_SECRET:?DOWNLOAD_TOKEN_SECRET is required}
