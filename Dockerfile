@@ -71,7 +71,11 @@ ENV RUST_LOG=info \
 
 # Copy the release binary from the builder stage
 ARG TARGETARCH
-COPY --from=builder /app/target/${TARGETARCH}-unknown-linux-musl/release/simple_file_server /app/simple_file_server
+RUN if [ "$TARGETARCH" = "arm64" ]; then \
+        cp /app/target/aarch64-unknown-linux-musl/release/simple_file_server /app/simple_file_server; \
+    else \
+        cp /app/target/x86_64-unknown-linux-musl/release/simple_file_server /app/simple_file_server; \
+    fi
 
 # Copy entrypoint (added separately) to drop privileges after ensuring writable volumes
 COPY docker/entrypoint.sh /entrypoint.sh
