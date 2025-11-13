@@ -18,13 +18,11 @@ Welcome! This repository contains a Rust-based file sharing and paste server wit
     ```bash
     cp .env.example .env
     # Generate secrets
-    echo "SESSION_KEY=base64:$(openssl rand -base64 32)" >> .env
-    echo "DOWNLOAD_TOKEN_SECRET=base64:$(openssl rand -base64 32)" >> .env
+    sed -i "s|SESSION_KEY=.*|SESSION_KEY=base64:$(openssl rand -base64 32)|" .env
+    sed -i "s|DOWNLOAD_TOKEN_SECRET=.*|DOWNLOAD_TOKEN_SECRET=base64:$(openssl rand -base64 32)|" .env
     ```
 
-    **Remember:**
-    - Keep these keys secret.
-    - **Remove the existing** `SESSION_KEY` and `DOWNLOAD_TOKEN_SECRET` lines from `.env` after adding the new ones.
+    **Remember**: Keep these keys secret!
 
 3. **Initialize the database:**
     You can use the provided script or manually create the database.
@@ -35,6 +33,8 @@ Welcome! This repository contains a Rust-based file sharing and paste server wit
 
     If you prefer using a different database location, adjust the `DATABASE_URL` in your `.env` file accordingly.
 
+> Manual editing of env
+
 4. **Modify the env accordingly**
    Update the `DATABASE_URL` in your `.env` file to point to the new database location:
    ```bash
@@ -42,6 +42,8 @@ Welcome! This repository contains a Rust-based file sharing and paste server wit
    ```
 
    This assumes you are using the above `data/app.db` path. Adjust as necessary. It is also worth noting that you may want need to change the `STORAGE_ROOT` variable to point to a valid directory for uploaded file storage.
+
+   **Warning** If you are self-deploying, the url in the `env.example` points to `/data/app.db` instead of the relative path `data/app.db`! Make sure to adjust this accordingly.
 
 5.  **Run the application:**
     ```bash
