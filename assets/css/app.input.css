@@ -208,7 +208,7 @@
   }
 
   .app-sidebar {
-    width: 15rem;
+    width: 18rem;
     transition:
       width 180ms ease,
       padding-left 180ms ease,
