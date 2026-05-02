@@ -31,8 +31,10 @@
       </div>
       {% endif %}
 
+
+
       <form method="post" action="/paste" novalidate class="flex flex-1 flex-col px-margin-mobile pb-24 md:px-margin-desktop md:pb-8">
-      <div class="flex flex-1 flex-col overflow-hidden rounded-xl border border-surface-variant bg-surface-container-low shadow-sm">
+      <div class="flex flex-1 flex-col overflow-hidden rounded-xl border border-surface-variant bg-surface-container-low shadow-sm {% if requires_auth %}opacity-50{% endif %}">
         <div class="flex flex-wrap items-center justify-between gap-4 border-b border-surface-variant bg-surface-container p-4">
           <div class="min-w-[200px] flex-1">
             <input
@@ -42,7 +44,8 @@
               maxlength="120"
               placeholder="Paste Title or Filename..."
               value="{{ form.title }}"
-              class="h-target-min w-full border-none bg-transparent p-0 font-title-lg text-title-lg text-on-surface placeholder:text-outline-variant focus:ring-0"
+              {% if requires_auth %}disabled{% endif %}
+              class="h-target-min w-full border-none bg-transparent p-0 font-title-lg text-title-lg text-on-surface placeholder:text-outline-variant focus:ring-0 {% if requires_auth %}cursor-not-allowed{% endif %}"
             />
             {% if let Some(error) = field_errors.title %}
             <small class="font-label-md text-label-md text-error">{{ error }}</small>
@@ -53,7 +56,8 @@
               <select
                 id="paste-language"
                 name="language"
-                class="h-10 cursor-pointer rounded-lg border border-outline-variant bg-surface pl-4 pr-10 font-label-md text-label-md text-on-surface outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                {% if requires_auth %}disabled{% endif %}
+                class="h-10 cursor-pointer rounded-lg border border-outline-variant bg-surface pl-4 pr-10 font-label-md text-label-md text-on-surface outline-none focus:border-primary focus:ring-1 focus:ring-primary {% if requires_auth %}cursor-not-allowed opacity-60{% endif %}"
               >
                 {% for option in languages %}
                 <option value="{{ option.value }}"{% if form.language == option.value %} selected{% endif %}>{{ option.label }}</option>
@@ -69,7 +73,8 @@
                 max="{{ max_expiration_hours }}"
                 value="{{ form.expires_in }}"
                 required
-                class="h-10 w-32 rounded-lg border border-outline-variant bg-surface px-4 font-label-md text-label-md text-on-surface outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                {% if requires_auth %}disabled{% endif %}
+                class="h-10 w-32 rounded-lg border border-outline-variant bg-surface px-4 font-label-md text-label-md text-on-surface outline-none focus:border-primary focus:ring-1 focus:ring-primary {% if requires_auth %}cursor-not-allowed opacity-60{% endif %}"
                 aria-label="Expiration in hours"
               />
             </div>
@@ -90,7 +95,8 @@
               placeholder="Type or paste your content here..."
               required
               spellcheck="false"
-              class="code-font min-h-full flex-1 resize-none whitespace-pre border-none bg-transparent p-4 font-body-md text-body-md leading-6 text-on-surface outline-none focus:ring-0"
+              {% if requires_auth %}disabled{% endif %}
+              class="code-font min-h-full flex-1 resize-none whitespace-pre border-none bg-transparent p-4 font-body-md text-body-md leading-6 text-on-surface outline-none focus:ring-0 {% if requires_auth %}cursor-not-allowed opacity-60{% endif %}"
             >{{ form.content }}</textarea>
           </div>
         </div>
@@ -113,7 +119,8 @@
           min="1"
           max="{{ max_expiration_hours }}"
           value="{{ form.expires_in }}"
-          class="mt-2 h-target-min w-full rounded-lg border-none bg-surface-container px-4 font-body-lg text-body-lg text-on-surface focus:ring-2 focus:ring-primary"
+          {% if requires_auth %}disabled{% endif %}
+          class="mt-2 h-target-min w-full rounded-lg border-none bg-surface-container px-4 font-body-lg text-body-lg text-on-surface focus:ring-2 focus:ring-primary {% if requires_auth %}cursor-not-allowed opacity-60{% endif %}"
           data-expiration-mobile
         />
       </div>
@@ -133,10 +140,17 @@
         <a href="/" class="flex h-target-min items-center justify-center rounded-full border border-outline-variant px-6 font-label-lg text-label-lg text-on-surface-variant transition-colors hover:bg-surface-variant">
           Cancel
         </a>
+        {% if requires_auth %}
+        <a href="/login" class="flex h-target-min items-center justify-center gap-2 rounded-full bg-surface-container-high px-8 font-label-lg text-label-lg text-on-surface-variant shadow-sm transition-colors hover:bg-surface-container-highest" title="Sign in to create pastes">
+          <span class="material-symbols-outlined">lock</span>
+          Sign In to Paste
+        </a>
+        {% else %}
         <button class="flex h-target-min items-center justify-center gap-2 rounded-full bg-primary-container px-8 font-label-lg text-label-lg text-on-primary-container shadow-sm transition-colors hover:bg-primary-container/90" type="submit">
           <span class="material-symbols-outlined fill">save</span>
           Create Paste
         </button>
+        {% endif %}
       </div>
       </form>
     </div>

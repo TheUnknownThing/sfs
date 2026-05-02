@@ -33,8 +33,12 @@ pub async fn upload_form_handler(
     session: Session,
 ) -> Response {
     match current_user(&session).await {
-        Ok(Some(_)) => render_upload_form(&state, &session, StatusCode::OK, None, None).await,
-        Ok(None) => axum::response::Redirect::to("/login").into_response(),
+        Ok(Some(_)) => {
+            render_upload_form(&state, &session, StatusCode::OK, None, None, false).await
+        }
+        Ok(None) => {
+            render_upload_form(&state, &session, StatusCode::OK, None, None, true).await
+        }
         Err(err) => {
             error!(target: "sessions", %err, "failed to read session while rendering upload form");
             server_error_response()
@@ -82,6 +86,7 @@ pub async fn upload_submit_handler(
                     StatusCode::BAD_REQUEST,
                     Some("The upload form could not be processed. Please try again.".to_string()),
                     expires_in_input,
+                    false,
                 )
                 .await;
             }
@@ -101,6 +106,7 @@ pub async fn upload_submit_handler(
                         StatusCode::BAD_REQUEST,
                         Some("Only one file can be uploaded at a time.".to_string()),
                         expires_in_input,
+                        false,
                     )
                     .await;
                 }
@@ -117,6 +123,7 @@ pub async fn upload_submit_handler(
                             StatusCode::PAYLOAD_TOO_LARGE,
                             Some(format!("Files must be {limit_display} or smaller.")),
                             expires_in_input,
+                            false,
                         )
                         .await;
                     }
@@ -127,6 +134,7 @@ pub async fn upload_submit_handler(
                             StatusCode::UNPROCESSABLE_ENTITY,
                             Some("Select a file before uploading.".to_string()),
                             expires_in_input,
+                            false,
                         )
                         .await;
                     }
@@ -140,6 +148,7 @@ pub async fn upload_submit_handler(
                                 "The file upload could not be read. Please try again.".to_string(),
                             ),
                             expires_in_input,
+                            false,
                         )
                         .await;
                     }
@@ -166,6 +175,7 @@ pub async fn upload_submit_handler(
                                     StatusCode::UNPROCESSABLE_ENTITY,
                                     Some("Expiration must be provided as whole hours.".to_string()),
                                     expires_in_input,
+                                    false,
                                 )
                                 .await;
                             }
@@ -180,6 +190,7 @@ pub async fn upload_submit_handler(
                         StatusCode::BAD_REQUEST,
                         Some("Unable to read the expiration value.".to_string()),
                         expires_in_input,
+                        false,
                     )
                     .await;
                 }
@@ -194,6 +205,7 @@ pub async fn upload_submit_handler(
                         StatusCode::BAD_REQUEST,
                         Some("Unable to validate your session. Please try again.".to_string()),
                         expires_in_input,
+                        false,
                     )
                     .await;
                 }
@@ -225,6 +237,7 @@ pub async fn upload_submit_handler(
             StatusCode::UNPROCESSABLE_ENTITY,
             Some("Your upload session expired. Refresh and try again.".to_string()),
             expires_in_for_form,
+            false,
         )
         .await;
     };
@@ -248,6 +261,7 @@ pub async fn upload_submit_handler(
             StatusCode::UNPROCESSABLE_ENTITY,
             Some("Your session expired. Please try again.".to_string()),
             expires_in_for_form,
+            false,
         )
         .await;
     }
@@ -259,6 +273,7 @@ pub async fn upload_submit_handler(
             StatusCode::UNPROCESSABLE_ENTITY,
             Some("Select a file before uploading.".to_string()),
             expires_in_for_form,
+            false,
         )
         .await;
     };
@@ -274,6 +289,7 @@ pub async fn upload_submit_handler(
                     MAX_EXPIRATION_HOURS
                 )),
                 expires_in_for_form,
+                false,
             )
             .await;
         }
@@ -367,6 +383,7 @@ async fn render_upload_form(
     status: StatusCode,
     error_message: Option<String>,
     expires_in_value: Option<String>,
+    requires_auth: bool,
 ) -> Response {
     let settings = match current_app_settings(state).await {
         Ok(settings) => settings,
@@ -384,7 +401,8 @@ async fn render_upload_form(
         max_file_size_display,
         MAX_EXPIRATION_HOURS,
         expires_value,
-    );
+    )
+    .with_requires_auth(requires_auth);
 
     if let Some(message) = error_message {
         template = template.with_error_message(message);

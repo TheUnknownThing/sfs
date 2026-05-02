@@ -19,6 +19,7 @@
         <a href="/settings" class="flex h-target-min w-target-min items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-high">
           <span class="material-symbols-outlined">settings</span>
         </a>
+        {% if layout.current_user.is_some() %}
         <form method="post" action="/logout" class="shrink-0">
           {% if let Some(csrf) = layout.csrf %}
           <input type="hidden" name="csrf_token" value="{{ csrf.token }}" />
@@ -27,6 +28,11 @@
             <span class="material-symbols-outlined">account_circle</span>
           </button>
         </form>
+        {% else %}
+        <a href="/login" class="flex h-target-min w-target-min items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-high" aria-label="Sign in">
+          <span class="material-symbols-outlined">login</span>
+        </a>
+        {% endif %}
       </div>
     </header>
 
@@ -43,8 +49,23 @@
         </div>
         {% endif %}
 
+
+
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div class="flex flex-col gap-6 lg:col-span-2">
+            {% if requires_auth %}
+            <div class="pointer-events-none relative flex min-h-[320px] cursor-not-allowed flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-outline bg-surface-container-lowest p-8 text-center opacity-50" title="Sign in to upload files">
+              <div class="absolute left-1/2 top-1/2 -z-10 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary-fixed/20 blur-3xl"></div>
+              <div>
+                <h3 class="mb-2 font-title-lg text-title-lg text-on-surface">Drag and drop files here</h3>
+                <p class="mb-6 max-w-sm font-body-md text-body-md text-on-surface-variant">Files are stored securely with expiring share codes. Max {{ max_file_size_display }} per transfer.</p>
+                <span class="inline-flex h-target-min items-center gap-2 rounded-full bg-surface-container-high px-6 py-3 font-label-lg text-label-lg text-on-surface">
+                  <span class="material-symbols-outlined">folder_open</span>
+                  Browse Files
+                </span>
+              </div>
+            </div>
+            {% else %}
             <label id="drop-zone" for="file-upload" class="group relative flex min-h-[320px] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-primary-fixed-dim bg-surface-container-lowest p-8 text-center transition-colors hover:bg-surface-container-low">
               <div class="absolute left-1/2 top-1/2 -z-10 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary-fixed/20 blur-3xl transition-colors group-hover:bg-primary-fixed/30"></div>
               <div id="drop-zone-text">
@@ -64,6 +85,7 @@
               </div>
               <input id="file-upload" type="file" name="file" required aria-required="true" class="sr-only" />
             </label>
+            {% endif %}
 
             <div id="selected-file-card" class="hidden rounded-xl border border-surface-container bg-surface-container-lowest p-6 shadow-sm">
               <div class="flex items-center justify-between gap-4">
@@ -88,7 +110,7 @@
             <div class="flex flex-col gap-6 rounded-xl border border-surface-container bg-surface-container-lowest p-6 shadow-sm">
               <h3 class="border-b border-surface-container pb-4 font-title-lg text-title-lg text-on-surface">Transfer Settings</h3>
 
-              <label class="flex flex-col gap-2 font-label-lg text-label-lg text-on-surface" for="upload-expires">
+              <label class="flex flex-col gap-2 font-label-lg text-label-lg text-on-surface {% if requires_auth %} opacity-50 {% endif %}" for="upload-expires">
                 Expiration in hours
                 <div class="relative">
                   <span class="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">calendar_today</span>
@@ -101,12 +123,13 @@
                     value="{{ expires_in_value }}"
                     required
                     aria-required="true"
-                    class="h-target-min w-full rounded-lg border-none bg-surface-container py-3 pl-10 pr-4 font-body-md text-body-md text-on-surface transition-colors focus:ring-2 focus:ring-primary"
+                    {% if requires_auth %}disabled{% endif %}
+                    class="h-target-min w-full rounded-lg border-none bg-surface-container py-3 pl-10 pr-4 font-body-md text-body-md text-on-surface transition-colors focus:ring-2 focus:ring-primary {% if requires_auth %}cursor-not-allowed opacity-60{% endif %}"
                   />
                 </div>
               </label>
 
-              <label class="flex flex-col gap-2 font-label-lg text-label-lg text-on-surface" for="upload-notes">
+              <label class="flex flex-col gap-2 font-label-lg text-label-lg text-on-surface {% if requires_auth %} opacity-50 {% endif %}" for="upload-notes">
                 <span class="flex items-center gap-2">
                   Encrypted Memo
                   <span class="material-symbols-outlined text-[16px] text-primary">lock</span>
@@ -116,7 +139,8 @@
                   name="notes"
                   rows="3"
                   placeholder="Add a secure note for the recipient..."
-                  class="w-full resize-none rounded-lg border-none bg-surface-container p-4 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:ring-2 focus:ring-primary"
+                  {% if requires_auth %}disabled{% endif %}
+                  class="w-full resize-none rounded-lg border-none bg-surface-container p-4 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:ring-2 focus:ring-primary {% if requires_auth %}cursor-not-allowed opacity-60{% endif %}"
                 ></textarea>
               </label>
 
@@ -133,10 +157,17 @@
             <input type="hidden" name="csrf_token" value="{{ csrf.token }}" />
             {% endif %}
 
+            {% if requires_auth %}
+            <a href="/login" class="flex h-target-min w-full items-center justify-center gap-2 rounded-full bg-surface-container-high px-6 py-4 font-label-lg text-label-lg text-on-surface-variant shadow-md transition-all hover:bg-surface-container-highest" title="Sign in to upload files">
+              <span class="material-symbols-outlined">lock</span>
+              Sign In to Upload
+            </a>
+            {% else %}
             <button class="flex h-target-min w-full items-center justify-center gap-2 rounded-full bg-primary px-6 py-4 font-label-lg text-label-lg text-on-primary shadow-md transition-all hover:bg-primary/90 active:scale-[0.98]" type="submit">
               <span class="material-symbols-outlined">send</span>
               Execute Transfer
             </button>
+            {% endif %}
           </div>
         </div>
       </form>

@@ -40,18 +40,19 @@ pub(crate) struct PasteForm {
 }
 
 pub async fn paste_form_handler(State(state): State<AppState>, session: Session) -> Response {
-    match current_user(&session).await {
-        Ok(Some(_)) => {}
-        Ok(None) => return axum::response::Redirect::to("/login").into_response(),
+    let (requires_auth, settings) = match current_user(&session).await {
+        Ok(Some(_)) => (false, match current_app_settings(&state).await {
+            Ok(settings) => settings,
+            Err(response) => return response,
+        }),
+        Ok(None) => (true, match current_app_settings(&state).await {
+            Ok(settings) => settings,
+            Err(response) => return response,
+        }),
         Err(err) => {
             error!(target: "sessions", %err, "failed to read session while rendering paste form");
             return server_error_response();
         }
-    }
-
-    let settings = match current_app_settings(&state).await {
-        Ok(settings) => settings,
-        Err(response) => return response,
     };
 
     let default_language = PASTE_LANGUAGES
@@ -74,6 +75,7 @@ pub async fn paste_form_handler(State(state): State<AppState>, session: Session)
         form,
         PasteFieldErrors::default(),
         None,
+        requires_auth,
     )
     .await
 }
@@ -174,6 +176,7 @@ pub async fn paste_submit_handler(
             form_values,
             field_errors,
             Some("Please correct the highlighted fields.".to_string()),
+            false,
         )
         .await;
     }
@@ -341,13 +344,15 @@ async fn render_paste_form(
     form: PasteFormValues,
     field_errors: PasteFieldErrors,
     general_error: Option<String>,
+    requires_auth: bool,
 ) -> Response {
     let layout = layout_from_session(state, session, "Paste").await;
     let limit_bytes = settings.max_file_size_bytes.min(MAX_PASTE_SIZE_BYTES);
     let max_size_display = human_readable_size(limit_bytes);
 
     let mut template = PasteTemplate::new(layout, form, MAX_EXPIRATION_HOURS, max_size_display)
-        .with_field_errors(field_errors);
+        .with_field_errors(field_errors)
+        .with_requires_auth(requires_auth);
 
     if let Some(message) = general_error {
         template = template.with_general_error(message);

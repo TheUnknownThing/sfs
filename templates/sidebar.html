@@ -25,12 +25,11 @@
       <span class="material-symbols-outlined shrink-0 {% if active_nav == "files" %}fill{% endif %}">folder</span>
       <span class="sidebar-expanded-only">Files</span>
     </a>
-    {% if layout.current_user.is_some() %}
-    <a class="sidebar-nav-link flex items-center gap-3 rounded-full px-4 py-3 font-label-lg text-label-lg transition-all {% if active_nav == "paste" %}bg-primary/10 text-primary{% else %}text-on-surface-variant hover:bg-surface-container-high{% endif %}" href="/paste" title="Pastebin">
+    <a class="sidebar-nav-link flex items-center gap-3 rounded-full px-4 py-3 font-label-lg text-label-lg transition-all {% if active_nav == "paste" %}bg-primary/10 text-primary{% else %}{% if layout.current_user.is_some() %}text-on-surface-variant hover:bg-surface-container-high{% else %}text-on-surface-variant/40 cursor-not-allowed{% endif %}{% endif %}" href="{% if layout.current_user.is_some() %}/paste{% else %}/login{% endif %}" title="{% if layout.current_user.is_some() %}Pastebin{% else %}Sign in to use Pastebin{% endif %}">
       <span class="material-symbols-outlined shrink-0 {% if active_nav == "paste" %}fill{% endif %}">content_paste</span>
       <span class="sidebar-expanded-only">Pastebin</span>
     </a>
-    <a class="sidebar-nav-link flex items-center gap-3 rounded-full px-4 py-3 font-label-lg text-label-lg transition-all {% if active_nav == "transfers" %}bg-primary/10 text-primary{% else %}text-on-surface-variant hover:bg-surface-container-high{% endif %}" href="/upload" title="Transfers">
+    <a class="sidebar-nav-link flex items-center gap-3 rounded-full px-4 py-3 font-label-lg text-label-lg transition-all {% if active_nav == "transfers" %}bg-primary/10 text-primary{% else %}{% if layout.current_user.is_some() %}text-on-surface-variant hover:bg-surface-container-high{% else %}text-on-surface-variant/40 cursor-not-allowed{% endif %}{% endif %}" href="{% if layout.current_user.is_some() %}/upload{% else %}/login{% endif %}" title="{% if layout.current_user.is_some() %}Transfers{% else %}Sign in to use Transfers{% endif %}">
       <span class="material-symbols-outlined shrink-0 {% if active_nav == "transfers" %}fill{% endif %}">swap_horiz</span>
       <span class="sidebar-expanded-only">Transfers</span>
     </a>
@@ -44,7 +43,6 @@
       <span class="material-symbols-outlined shrink-0 {% if active_nav == "users" %}fill{% endif %}">group</span>
       <span class="sidebar-expanded-only">Users</span>
     </a>
-    {% endif %}
     {% endif %}
     {% endif %}
   </nav>

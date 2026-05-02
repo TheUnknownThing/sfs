@@ -207,6 +207,7 @@ pub struct UploadTemplate {
     pub max_expiration_hours: u64,
     pub expires_in_value: String,
     pub error_message: Option<String>,
+    pub requires_auth: bool,
 }
 
 impl UploadTemplate {
@@ -222,11 +223,17 @@ impl UploadTemplate {
             max_expiration_hours,
             expires_in_value: expires_in_value.into(),
             error_message: None,
+            requires_auth: false,
         }
     }
 
     pub fn with_error_message(mut self, message: impl Into<String>) -> Self {
         self.error_message = Some(message.into());
+        self
+    }
+
+    pub fn with_requires_auth(mut self, requires_auth: bool) -> Self {
+        self.requires_auth = requires_auth;
         self
     }
 }
@@ -634,6 +641,7 @@ pub struct PasteTemplate {
     pub max_expiration_hours: u64,
     pub max_size_display: String,
     pub languages: &'static [PasteLanguageOption],
+    pub requires_auth: bool,
 }
 
 impl PasteTemplate {
@@ -651,6 +659,7 @@ impl PasteTemplate {
             max_expiration_hours,
             max_size_display: max_size_display.into(),
             languages: PASTE_LANGUAGES,
+            requires_auth: false,
         }
     }
 
@@ -661,6 +670,11 @@ impl PasteTemplate {
 
     pub fn with_general_error(mut self, message: impl Into<String>) -> Self {
         self.general_error = Some(message.into());
+        self
+    }
+
+    pub fn with_requires_auth(mut self, requires_auth: bool) -> Self {
+        self.requires_auth = requires_auth;
         self
     }
 }
