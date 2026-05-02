@@ -54,13 +54,13 @@
             Enter the 8-character share code provided to you to securely view or download files.
           </p>
           <form id="code-lookup-form" action="/f/" method="get" novalidate class="flex flex-col items-center gap-6">
-            <div class="flex justify-center gap-2 sm:gap-3" dir="ltr" role="group" aria-label="File code">
+            <div class="flex justify-center gap-1.5 xs:gap-2 sm:gap-3" dir="ltr" role="group" aria-label="File code">
               {% for index in 0..8 %}
               {% if index == 4 %}
-              <div class="flex w-2 items-center justify-center font-bold text-outline-variant sm:w-4">-</div>
+              <div class="flex w-1.5 items-center justify-center text-sm font-bold text-outline-variant xs:w-2 sm:w-4 sm:text-base">-</div>
               {% endif %}
               <input
-                class="code-input h-14 w-10 rounded-lg border-none bg-surface-container-highest text-center font-title-lg text-title-lg uppercase text-on-surface transition-all placeholder:text-outline-variant focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary sm:h-16 sm:w-12"
+                class="code-input h-11 w-8 rounded-lg border-none bg-surface-container-highest text-center text-lg font-semibold uppercase text-on-surface transition-all placeholder:text-outline-variant focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary xs:h-12 xs:w-9 xs:text-xl sm:h-14 sm:w-10 sm:text-2xl md:h-16 md:w-12 md:text-[1.75rem]"
                 type="text"
                 inputmode="text"
                 autocomplete="one-time-code"
