@@ -30,10 +30,6 @@ The repository ships with `docker-compose.yml` which:
 {$SFS_DOMAIN:files.local} {
   encode zstd gzip
   tls {$SFS_TLS_EMAIL:internal}
-  @static path /static/*
-  handle @static {
-    respond 404
-  }
   handle {
     header {
       Strict-Transport-Security "max-age=31536000; includeSubDomains"

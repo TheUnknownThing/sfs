@@ -22,6 +22,7 @@ sqlx = { version = "0.7.4", features = ["runtime-tokio-rustls", "macros", "sqlit
 # Templates
 askama = { version = "0.12", features = ["with-axum"] }
 askama_axum = "0.4"
+include_dir = "0.7"
 
 # Authentication
 argon2 = "0.5"

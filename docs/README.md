@@ -23,7 +23,7 @@ A pretty, team-friendly upload server with file-code sharing and paste functiona
 - Sessions: tower-sessions + tower-sessions-sqlx (SQLite-backed)
 - Passwords: argon2 (Argon2id)
 - IDs: ULID for file IDs, nanoid for short codes
-- UI: locally compiled Tailwind CSS + local htmx + subsetted local fonts/icons served from `static/`
+- UI: locally compiled Tailwind CSS + local htmx + subsetted local fonts/icons embedded into the binary
 - Config: config crate + dotenvy
 - Logging: tracing + tracing-subscriber
 - Rate limit: tower-governor

@@ -311,7 +311,10 @@ fn forwarded_host(headers: &HeaderMap) -> Option<&str> {
 }
 
 fn first_forwarded_value(value: &str) -> Option<&str> {
-    value.split(',').map(str::trim).find(|part| !part.is_empty())
+    value
+        .split(',')
+        .map(str::trim)
+        .find(|part| !part.is_empty())
 }
 
 fn header_value<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {

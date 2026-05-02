@@ -85,7 +85,7 @@ Welcome! This repository contains a Rust-based file sharing and paste server wit
     ```bash
     cargo build --release
     ```
-    The binary will be located at `target/release/simple_file_server`. Run `npm run build:static` before packaging and deploy the generated `static/` directory beside the binary.
+    The binary will be located at `target/release/simple_file_server`. Run `npm run build:static` before `cargo build --release`; the generated CSS, JS, and font files are embedded into the binary at compile time.
 
 2.  **Prepare the environment:**
     On your server, create a directory for the application. Copy the `simple_file_server` binary to this directory.

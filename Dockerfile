@@ -70,10 +70,10 @@ ENV RUST_LOG=info \
     STORAGE_ROOT=/data/storage \
     COOKIE_SECURE=true
 
-# Copy the release binary from the builder stage
+# Copy the release binary from the builder stage. Static web assets are embedded
+# during cargo build, so the runtime image only needs the executable.
 ARG TARGETARCH
 COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/simple_file_server /app/simple_file_server
-COPY --from=builder /app/static /app/static
 
 # Copy entrypoint (added separately) to drop privileges after ensuring writable volumes
 COPY docker/entrypoint.sh /entrypoint.sh
