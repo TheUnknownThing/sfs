@@ -6,7 +6,7 @@
   {% include "sidebar.html" %}
 
   <div class="flex h-screen flex-grow flex-col overflow-hidden">
-    <header class="flex h-16 w-full shrink-0 items-center justify-between gap-3 border-b border-surface-container bg-neutral-50 px-4 sm:px-6 md:hidden">
+    <header class="flex h-16 w-full shrink-0 items-center justify-between gap-3 border-b border-surface-container bg-surface px-4 sm:px-6 md:hidden">
       <div class="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
         <a href="/" class="flex h-target-min w-target-min items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-high md:hidden">
           <span class="material-symbols-outlined">close</span>
@@ -15,6 +15,7 @@
         <h2 class="hidden font-title-lg text-title-lg text-on-surface md:block">Secure Transfer</h2>
       </div>
       <div class="flex shrink-0 items-center gap-2">
+        {% include "theme_toggle.html" %}
         <a href="/settings" class="flex h-target-min w-target-min items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-high">
           <span class="material-symbols-outlined">settings</span>
         </a>

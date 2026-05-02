@@ -6,24 +6,25 @@
   {% include "sidebar.html" %}
 
   <main class="relative flex h-full flex-1 flex-col overflow-hidden bg-background">
-    <header class="relative z-10 flex h-16 w-full items-center justify-between gap-3 bg-neutral-50 px-4 sm:px-6 md:hidden">
+    <header class="relative z-10 flex h-16 w-full items-center justify-between gap-3 bg-surface px-4 sm:px-6 md:hidden">
       <div class="flex min-w-0 flex-1 items-center gap-2 md:hidden">
-        <span class="material-symbols-outlined text-[#4A675F]">menu</span>
-        <span class="truncate text-xl font-bold tracking-tight text-[#4A675F]">{{ layout.brand_name }}</span>
+        <span class="material-symbols-outlined text-primary">menu</span>
+        <span class="truncate text-xl font-bold tracking-tight text-primary">{{ layout.brand_name }}</span>
       </div>
       <div class="hidden w-96 max-w-md items-center rounded-full bg-surface-container-low px-4 py-2 transition-all focus-within:bg-surface focus-within:ring-2 focus-within:ring-primary md:flex">
         <span class="material-symbols-outlined mr-2 text-on-surface-variant">search</span>
         <input class="w-full border-none bg-transparent p-0 font-body-md text-on-surface outline-none placeholder:text-on-surface-variant focus:ring-0" placeholder="Search users, files, or logs..." type="text" />
       </div>
-      <div class="flex shrink-0 items-center gap-2 text-[#4A675F]">
-        <a href="/settings" class="flex h-target-min w-target-min items-center justify-center rounded-full transition-colors hover:bg-neutral-100" aria-label="Settings">
+      <div class="flex shrink-0 items-center gap-2 text-primary">
+        {% include "theme_toggle.html" %}
+        <a href="/settings" class="flex h-target-min w-target-min items-center justify-center rounded-full transition-colors hover:bg-surface-container-high" aria-label="Settings">
           <span class="material-symbols-outlined">settings</span>
         </a>
         <form method="post" action="/logout" class="shrink-0">
           {% if let Some(csrf) = layout.csrf %}
           <input type="hidden" name="csrf_token" value="{{ csrf.token }}" />
           {% endif %}
-          <button class="flex h-target-min w-target-min items-center justify-center rounded-full transition-colors hover:bg-neutral-100" type="submit" aria-label="Log out">
+          <button class="flex h-target-min w-target-min items-center justify-center rounded-full transition-colors hover:bg-surface-container-high" type="submit" aria-label="Log out">
             <span class="material-symbols-outlined">account_circle</span>
           </button>
         </form>
@@ -87,7 +88,7 @@
             </span>
             <span class="relative inline-flex cursor-pointer items-center">
               <input class="peer sr-only" type="checkbox" id="add-user-is-admin" name="is_admin" {% if add_form.is_admin %}checked{% endif %} />
-              <span class="h-6 w-11 rounded-full bg-surface-variant after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:border-white"></span>
+              <span class="h-6 w-11 rounded-full bg-surface-variant after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-outline-variant after:bg-surface after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:border-on-primary"></span>
             </span>
           </label>
           <div class="flex justify-end md:col-span-2">

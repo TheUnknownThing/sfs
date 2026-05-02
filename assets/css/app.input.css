@@ -67,9 +67,118 @@
 @tailwind utilities;
 
 @layer base {
+  :root,
+  html.light {
+    color-scheme: light;
+    --color-primary-container: 74 103 95;
+    --color-surface-dim: 216 218 218;
+    --color-surface: 248 250 249;
+    --color-primary-fixed-dim: 174 205 195;
+    --color-tertiary: 54 80 59;
+    --color-error: 186 26 26;
+    --color-surface-bright: 248 250 249;
+    --color-surface-container-high: 230 233 232;
+    --color-inverse-primary: 174 205 195;
+    --color-surface-tint: 71 100 92;
+    --color-surface-container-highest: 225 227 226;
+    --color-on-primary: 255 255 255;
+    --color-outline: 114 121 118;
+    --color-secondary-container: 197 228 245;
+    --color-on-primary-container: 196 228 218;
+    --color-inverse-surface: 46 49 49;
+    --color-background: 248 250 249;
+    --color-tertiary-container: 77 104 81;
+    --color-on-secondary-fixed-variant: 45 75 88;
+    --color-error-container: 255 218 214;
+    --color-secondary-fixed: 200 231 248;
+    --color-on-surface: 25 28 28;
+    --color-inverse-on-surface: 239 241 240;
+    --color-surface-container-lowest: 255 255 255;
+    --color-on-primary-fixed: 2 32 26;
+    --color-primary-fixed: 201 233 223;
+    --color-on-tertiary-fixed: 7 32 15;
+    --color-on-secondary-container: 73 103 117;
+    --color-on-surface-variant: 65 72 70;
+    --color-on-tertiary-fixed-variant: 51 77 56;
+    --color-primary: 50 79 71;
+    --color-surface-variant: 225 227 226;
+    --color-surface-container-low: 242 244 243;
+    --color-on-error: 255 255 255;
+    --color-outline-variant: 193 200 196;
+    --color-on-tertiary-container: 199 229 201;
+    --color-on-secondary-fixed: 0 31 42;
+    --color-tertiary-fixed-dim: 176 206 178;
+    --color-surface-container: 236 238 237;
+    --color-on-secondary: 255 255 255;
+    --color-secondary: 69 98 113;
+    --color-on-tertiary: 255 255 255;
+    --color-on-error-container: 147 0 10;
+    --color-tertiary-fixed: 204 234 206;
+    --color-secondary-fixed-dim: 172 203 220;
+    --color-on-primary-fixed-variant: 48 76 69;
+    --color-on-background: 25 28 28;
+  }
+
+  html.dark {
+    color-scheme: dark;
+    --color-primary-container: 74 103 95;
+    --color-surface-dim: 17 20 20;
+    --color-surface: 17 20 20;
+    --color-primary-fixed-dim: 174 205 195;
+    --color-tertiary: 176 206 178;
+    --color-error: 255 180 171;
+    --color-surface-bright: 56 58 57;
+    --color-surface-container-high: 39 43 41;
+    --color-inverse-primary: 50 79 71;
+    --color-surface-tint: 174 205 195;
+    --color-surface-container-highest: 50 54 52;
+    --color-on-primary: 2 32 26;
+    --color-outline: 139 147 143;
+    --color-secondary-container: 45 75 88;
+    --color-on-primary-container: 196 228 218;
+    --color-inverse-surface: 225 227 226;
+    --color-background: 17 20 20;
+    --color-tertiary-container: 51 77 56;
+    --color-on-secondary-fixed-variant: 45 75 88;
+    --color-error-container: 147 0 10;
+    --color-secondary-fixed: 200 231 248;
+    --color-on-surface: 225 227 226;
+    --color-inverse-on-surface: 46 49 49;
+    --color-surface-container-lowest: 12 15 14;
+    --color-on-primary-fixed: 2 32 26;
+    --color-primary-fixed: 201 233 223;
+    --color-on-tertiary-fixed: 7 32 15;
+    --color-on-secondary-container: 200 231 248;
+    --color-on-surface-variant: 193 200 196;
+    --color-on-tertiary-fixed-variant: 51 77 56;
+    --color-primary: 174 205 195;
+    --color-surface-variant: 65 72 70;
+    --color-surface-container-low: 25 28 27;
+    --color-on-error: 105 0 5;
+    --color-outline-variant: 65 72 70;
+    --color-on-tertiary-container: 204 234 206;
+    --color-on-secondary-fixed: 0 31 42;
+    --color-tertiary-fixed-dim: 176 206 178;
+    --color-surface-container: 29 33 31;
+    --color-on-secondary: 22 51 63;
+    --color-secondary: 172 203 220;
+    --color-on-tertiary: 29 55 34;
+    --color-on-error-container: 255 218 214;
+    --color-tertiary-fixed: 204 234 206;
+    --color-secondary-fixed-dim: 172 203 220;
+    --color-on-primary-fixed-variant: 48 76 69;
+    --color-on-background: 225 227 226;
+  }
+
   body {
     font-family: "Manrope", sans-serif;
     -webkit-tap-highlight-color: transparent;
+  }
+
+  input,
+  select,
+  textarea {
+    color-scheme: inherit;
   }
 }
 
@@ -123,6 +232,7 @@
   }
 
   html[data-sidebar-collapsed="true"] .sidebar-primary-action,
+  html[data-sidebar-collapsed="true"] .sidebar-theme-toggle,
   html[data-sidebar-collapsed="true"] .sidebar-nav-link,
   html[data-sidebar-collapsed="true"] .sidebar-user-button {
     gap: 0;
@@ -141,7 +251,7 @@
   }
 
   .preview-scroll::-webkit-scrollbar-thumb {
-    background-color: #c1c8c4;
+    background-color: rgb(var(--color-outline-variant));
     border-radius: 9999px;
   }
 }

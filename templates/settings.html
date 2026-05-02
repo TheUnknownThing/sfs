@@ -6,12 +6,13 @@
   {% include "sidebar.html" %}
 
   <main class="flex min-h-screen flex-1 flex-col">
-    <header class="flex h-16 w-full shrink-0 items-center justify-between gap-3 border-b border-neutral-200 bg-neutral-50 px-4 sm:px-6 md:hidden">
+    <header class="flex h-16 w-full shrink-0 items-center justify-between gap-3 border-b border-surface-variant bg-surface px-4 sm:px-6 md:hidden">
       <div class="flex min-w-0 flex-1 items-center gap-4">
-        <span class="truncate text-xl font-bold tracking-tight text-[#4A675F]">{{ layout.brand_name }}</span>
+        <span class="truncate text-xl font-bold tracking-tight text-primary">{{ layout.brand_name }}</span>
       </div>
-      <div class="flex shrink-0 items-center gap-4 text-[#4A675F]">
-        <a href="/admin/users" class="flex h-target-min w-target-min items-center justify-center rounded-full transition-colors hover:bg-neutral-100">
+      <div class="flex shrink-0 items-center gap-4 text-primary">
+        {% include "theme_toggle.html" %}
+        <a href="/admin/users" class="flex h-target-min w-target-min items-center justify-center rounded-full transition-colors hover:bg-surface-container-high">
           <span class="material-symbols-outlined">group</span>
         </a>
       </div>
@@ -143,7 +144,7 @@
                 </span>
                 <span class="relative inline-flex cursor-pointer items-center">
                   <input class="peer sr-only" type="checkbox" id="allow_anonymous_download" name="allow_anonymous_download" {% if form.allow_anonymous_download %}checked{% endif %} />
-                  <span class="h-6 w-11 rounded-full bg-surface-variant after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:border-white"></span>
+                  <span class="h-6 w-11 rounded-full bg-surface-variant after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-outline-variant after:bg-surface after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:border-on-primary"></span>
                 </span>
               </label>
 
@@ -154,7 +155,7 @@
                 </span>
                 <span class="relative inline-flex cursor-pointer items-center">
                   <input class="peer sr-only" type="checkbox" id="allow_registration" name="allow_registration" {% if form.allow_registration %}checked{% endif %} />
-                  <span class="h-6 w-11 rounded-full bg-surface-variant after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:border-white"></span>
+                  <span class="h-6 w-11 rounded-full bg-surface-variant after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-outline-variant after:bg-surface after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:border-on-primary"></span>
                 </span>
               </label>
             </div>

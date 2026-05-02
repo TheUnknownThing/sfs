@@ -6,27 +6,28 @@
   {% include "sidebar.html" %}
 
   <main class="relative flex min-w-0 flex-1 flex-col">
-    <header class="sticky top-0 z-50 flex h-16 w-full items-center justify-between gap-3 border-b border-neutral-200 bg-neutral-50 px-4 sm:px-6 md:hidden">
+    <header class="sticky top-0 z-50 flex h-16 w-full items-center justify-between gap-3 border-b border-surface-variant bg-surface px-4 sm:px-6 md:hidden">
       <div class="min-w-0 flex-1">
-        <div class="truncate text-xl font-bold tracking-tight text-[#4A675F]">{{ layout.brand_name }}</div>
+        <div class="truncate text-xl font-bold tracking-tight text-primary">{{ layout.brand_name }}</div>
       </div>
-      <div class="flex shrink-0 items-center gap-2 text-[#4A675F]">
+      <div class="flex shrink-0 items-center gap-2 text-primary">
+        {% include "theme_toggle.html" %}
         {% if let Some(user) = layout.current_user %}
-        <a href="/settings" class="flex h-target-min w-target-min items-center justify-center rounded-full transition-colors hover:bg-neutral-100">
+        <a href="/settings" class="flex h-target-min w-target-min items-center justify-center rounded-full transition-colors hover:bg-surface-container-high">
           <span class="material-symbols-outlined">settings</span>
         </a>
         <form method="post" action="/logout" class="shrink-0">
           {% if let Some(csrf) = layout.csrf %}
           <input type="hidden" name="csrf_token" value="{{ csrf.token }}" />
           {% endif %}
-          <button class="flex h-target-min w-target-min items-center justify-center gap-2 rounded-full font-label-lg text-label-lg transition-colors hover:bg-neutral-100 sm:w-auto sm:px-4" type="submit" aria-label="Log out">
+          <button class="flex h-target-min w-target-min items-center justify-center gap-2 rounded-full font-label-lg text-label-lg transition-colors hover:bg-surface-container-high sm:w-auto sm:px-4" type="submit" aria-label="Log out">
             <span class="material-symbols-outlined">logout</span>
             <span class="hidden sm:inline">{{ user.username }}</span>
           </button>
         </form>
         {% else %}
         {% if layout.registration_open %}
-        <a href="/register" class="hidden h-target-min items-center rounded-full px-4 font-label-lg text-label-lg text-[#4A675F] transition-colors hover:bg-neutral-100 sm:flex">Register</a>
+        <a href="/register" class="hidden h-target-min items-center rounded-full px-4 font-label-lg text-label-lg text-primary transition-colors hover:bg-surface-container-high sm:flex">Register</a>
         {% endif %}
         <a href="/login" class="flex h-target-min shrink-0 items-center rounded-full bg-primary px-5 font-label-lg text-label-lg text-on-primary shadow-sm transition-opacity hover:opacity-90">Login</a>
         {% endif %}

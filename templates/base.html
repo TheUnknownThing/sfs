@@ -1,14 +1,104 @@
 <!DOCTYPE html>
-<html class="light" lang="en">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>
       {% block title %}{{ layout.title }} - {{ layout.brand_name }}{% endblock %}
     </title>
-    <meta name="color-scheme" content="light" />
+    <meta name="color-scheme" content="light dark" />
     <script>
       (() => {
+        const themeStorageKey = "sfs-theme";
+        const validThemes = new Set(["light", "dark", "system"]);
+        const root = document.documentElement;
+        const colorScheme = document.querySelector('meta[name="color-scheme"]');
+        const systemTheme = window.matchMedia("(prefers-color-scheme: dark)");
+
+        const readTheme = () => {
+          try {
+            const storedTheme = localStorage.getItem(themeStorageKey);
+            return validThemes.has(storedTheme) ? storedTheme : "system";
+          } catch (_) {
+            return "system";
+          }
+        };
+
+        const resolvedTheme = (theme) => {
+          if (theme === "system") {
+            return systemTheme.matches ? "dark" : "light";
+          }
+          return theme;
+        };
+
+        const applyTheme = (theme = readTheme()) => {
+          const effectiveTheme = resolvedTheme(theme);
+          root.classList.toggle("dark", effectiveTheme === "dark");
+          root.classList.toggle("light", effectiveTheme === "light");
+          root.dataset.theme = theme;
+          root.dataset.effectiveTheme = effectiveTheme;
+          if (colorScheme) {
+            colorScheme.setAttribute(
+              "content",
+              effectiveTheme === "dark" ? "dark light" : "light dark",
+            );
+          }
+          return { theme, effectiveTheme };
+        };
+
+        const syncThemeToggles = () => {
+          const { effectiveTheme } = applyTheme(readTheme());
+          const nextTheme = effectiveTheme === "dark" ? "light" : "dark";
+          const label = `Switch to ${nextTheme} theme`;
+          document.querySelectorAll("[data-theme-toggle]").forEach((toggle) => {
+            toggle.setAttribute("aria-label", label);
+            toggle.setAttribute("title", label);
+            toggle.setAttribute("aria-pressed", String(effectiveTheme === "dark"));
+            toggle.querySelectorAll("[data-theme-icon]").forEach((icon) => {
+              icon.textContent = effectiveTheme === "dark" ? "light_mode" : "dark_mode";
+            });
+            toggle.querySelectorAll("[data-theme-label]").forEach((text) => {
+              text.textContent = effectiveTheme === "dark" ? "Light theme" : "Dark theme";
+            });
+          });
+        };
+
+        const saveTheme = (theme) => {
+          try {
+            localStorage.setItem(themeStorageKey, theme);
+          } catch (_) {
+          }
+          applyTheme(theme);
+          syncThemeToggles();
+        };
+
+        const toggleTheme = () => {
+          const { effectiveTheme } = applyTheme(readTheme());
+          saveTheme(effectiveTheme === "dark" ? "light" : "dark");
+        };
+
+        window.SfsTheme = {
+          apply: applyTheme,
+          read: readTheme,
+          save: saveTheme,
+          syncToggles: syncThemeToggles,
+          toggle: toggleTheme,
+        };
+
+        const handleSystemThemeChange = () => {
+          if (readTheme() === "system") {
+            applyTheme("system");
+            syncThemeToggles();
+          }
+        };
+
+        applyTheme();
+        if (typeof systemTheme.addEventListener === "function") {
+          systemTheme.addEventListener("change", handleSystemThemeChange);
+        } else if (typeof systemTheme.addListener === "function") {
+          systemTheme.addListener(handleSystemThemeChange);
+        }
+
         try {
           if (localStorage.getItem("sfs-sidebar-collapsed") === "true") {
             document.documentElement.dataset.sidebarCollapsed = "true";
@@ -46,10 +136,18 @@
         });
       };
 
+      const syncThemeToggles = () => {
+        window.SfsTheme?.syncToggles();
+      };
+
       if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", syncSidebarToggles);
+        document.addEventListener("DOMContentLoaded", () => {
+          syncSidebarToggles();
+          syncThemeToggles();
+        });
       } else {
         syncSidebarToggles();
+        syncThemeToggles();
       }
 
       document.body.addEventListener("htmx:configRequest", (event) => {
@@ -67,6 +165,12 @@
       });
 
       document.addEventListener("click", (event) => {
+        const themeToggle = event.target.closest("[data-theme-toggle]");
+        if (themeToggle) {
+          window.SfsTheme?.toggle();
+          return;
+        }
+
         const sidebarToggle = event.target.closest("[data-sidebar-toggle]");
         if (sidebarToggle) {
           const root = document.documentElement;

@@ -1,9 +1,9 @@
-<aside class="app-sidebar sticky top-0 hidden h-screen shrink-0 flex-col gap-2 border-r border-neutral-200 bg-neutral-50 px-4 py-6 md:flex">
+<aside class="app-sidebar sticky top-0 hidden h-screen shrink-0 flex-col gap-2 border-r border-surface-variant bg-surface px-4 py-6 md:flex">
   <div class="sidebar-brand mb-8 flex min-h-10 items-center justify-between gap-2 px-4">
     <div class="sidebar-expanded-only min-w-0 flex-1">
-      <h1 class="truncate text-lg font-black leading-10 tracking-tight text-[#4A675F]">{{ layout.brand_name }}</h1>
+      <h1 class="truncate text-lg font-black leading-10 tracking-tight text-primary">{{ layout.brand_name }}</h1>
     </div>
-    <button class="sidebar-collapse-toggle flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-neutral-600 transition-colors hover:bg-neutral-200/50" type="button" data-sidebar-toggle aria-label="Collapse sidebar" aria-expanded="true">
+    <button class="sidebar-collapse-toggle flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-high" type="button" data-sidebar-toggle aria-label="Collapse sidebar" aria-expanded="true">
       <span class="material-symbols-outlined">menu_open</span>
     </button>
   </div>
@@ -21,26 +21,26 @@
   {% endif %}
 
   <nav class="flex flex-1 flex-col gap-2">
-    <a class="sidebar-nav-link flex items-center gap-3 rounded-full px-4 py-3 font-label-lg text-label-lg transition-all {% if active_nav == "files" %}bg-[#4A675F]/10 text-[#4A675F]{% else %}text-neutral-600 hover:bg-neutral-200/50{% endif %}" href="/" title="Files">
+    <a class="sidebar-nav-link flex items-center gap-3 rounded-full px-4 py-3 font-label-lg text-label-lg transition-all {% if active_nav == "files" %}bg-primary/10 text-primary{% else %}text-on-surface-variant hover:bg-surface-container-high{% endif %}" href="/" title="Files">
       <span class="material-symbols-outlined shrink-0 {% if active_nav == "files" %}fill{% endif %}">folder</span>
       <span class="sidebar-expanded-only">Files</span>
     </a>
     {% if layout.current_user.is_some() %}
-    <a class="sidebar-nav-link flex items-center gap-3 rounded-full px-4 py-3 font-label-lg text-label-lg transition-all {% if active_nav == "paste" %}bg-[#4A675F]/10 text-[#4A675F]{% else %}text-neutral-600 hover:bg-neutral-200/50{% endif %}" href="/paste" title="Pastebin">
+    <a class="sidebar-nav-link flex items-center gap-3 rounded-full px-4 py-3 font-label-lg text-label-lg transition-all {% if active_nav == "paste" %}bg-primary/10 text-primary{% else %}text-on-surface-variant hover:bg-surface-container-high{% endif %}" href="/paste" title="Pastebin">
       <span class="material-symbols-outlined shrink-0 {% if active_nav == "paste" %}fill{% endif %}">content_paste</span>
       <span class="sidebar-expanded-only">Pastebin</span>
     </a>
-    <a class="sidebar-nav-link flex items-center gap-3 rounded-full px-4 py-3 font-label-lg text-label-lg transition-all {% if active_nav == "transfers" %}bg-[#4A675F]/10 text-[#4A675F]{% else %}text-neutral-600 hover:bg-neutral-200/50{% endif %}" href="/upload" title="Transfers">
+    <a class="sidebar-nav-link flex items-center gap-3 rounded-full px-4 py-3 font-label-lg text-label-lg transition-all {% if active_nav == "transfers" %}bg-primary/10 text-primary{% else %}text-on-surface-variant hover:bg-surface-container-high{% endif %}" href="/upload" title="Transfers">
       <span class="material-symbols-outlined shrink-0 {% if active_nav == "transfers" %}fill{% endif %}">swap_horiz</span>
       <span class="sidebar-expanded-only">Transfers</span>
     </a>
     {% if let Some(user) = layout.current_user %}
     {% if user.is_admin %}
-    <a class="sidebar-nav-link flex items-center gap-3 rounded-full px-4 py-3 font-label-lg text-label-lg transition-all {% if active_nav == "security" %}bg-[#4A675F]/10 text-[#4A675F]{% else %}text-neutral-600 hover:bg-neutral-200/50{% endif %}" href="/settings" title="Security">
+    <a class="sidebar-nav-link flex items-center gap-3 rounded-full px-4 py-3 font-label-lg text-label-lg transition-all {% if active_nav == "security" %}bg-primary/10 text-primary{% else %}text-on-surface-variant hover:bg-surface-container-high{% endif %}" href="/settings" title="Security">
       <span class="material-symbols-outlined shrink-0 {% if active_nav == "security" %}fill{% endif %}">shield</span>
       <span class="sidebar-expanded-only">Security</span>
     </a>
-    <a class="sidebar-nav-link flex items-center gap-3 rounded-full px-4 py-3 font-label-lg text-label-lg transition-all {% if active_nav == "users" %}bg-[#4A675F]/10 text-[#4A675F]{% else %}text-neutral-600 hover:bg-neutral-200/50{% endif %}" href="/admin/users" title="Users">
+    <a class="sidebar-nav-link flex items-center gap-3 rounded-full px-4 py-3 font-label-lg text-label-lg transition-all {% if active_nav == "users" %}bg-primary/10 text-primary{% else %}text-on-surface-variant hover:bg-surface-container-high{% endif %}" href="/admin/users" title="Users">
       <span class="material-symbols-outlined shrink-0 {% if active_nav == "users" %}fill{% endif %}">group</span>
       <span class="sidebar-expanded-only">Users</span>
     </a>
@@ -49,13 +49,20 @@
     {% endif %}
   </nav>
 
+  <div class="mt-6 border-t border-surface-variant pt-4">
+    <button class="sidebar-theme-toggle flex h-target-min w-full items-center justify-center gap-2 rounded-full px-4 font-label-lg text-label-lg text-on-surface-variant transition-colors hover:bg-surface-container-high" type="button" data-theme-toggle aria-label="Switch theme" aria-pressed="false" title="Switch theme">
+      <span class="material-symbols-outlined shrink-0" data-theme-icon>dark_mode</span>
+      <span class="sidebar-expanded-only" data-theme-label>Dark theme</span>
+    </button>
+  </div>
+
   {% if let Some(user) = layout.current_user %}
-  <div class="mt-6 border-t border-neutral-200 pt-4">
+  <div class="mt-2">
     <form method="post" action="/logout">
       {% if let Some(csrf) = layout.csrf %}
       <input type="hidden" name="csrf_token" value="{{ csrf.token }}" />
       {% endif %}
-      <button class="sidebar-user-button flex h-target-min w-full items-center justify-center gap-2 rounded-full px-4 font-label-lg text-label-lg text-neutral-600 transition-colors hover:bg-neutral-200/50" type="submit" title="Log out {{ user.username }}">
+      <button class="sidebar-user-button flex h-target-min w-full items-center justify-center gap-2 rounded-full px-4 font-label-lg text-label-lg text-on-surface-variant transition-colors hover:bg-surface-container-high" type="submit" title="Log out {{ user.username }}">
         <span class="material-symbols-outlined shrink-0">logout</span>
         <span class="sidebar-expanded-only truncate">{{ user.username }}</span>
       </button>

@@ -14,6 +14,7 @@
         </div>
       </div>
       <div class="flex shrink-0 items-center gap-2">
+        {% include "theme_toggle.html" %}
         <button type="button" class="flex h-12 w-12 items-center justify-center rounded-full bg-secondary-container font-label-lg text-label-lg text-on-secondary-container transition-colors hover:bg-secondary-container/80 sm:w-auto sm:gap-2 sm:px-6" onclick="handleDownload(event, '{{ code }}')" aria-label="Download file">
           <span class="material-symbols-outlined fill">download</span>
           <span class="hidden sm:inline">Download File</span>

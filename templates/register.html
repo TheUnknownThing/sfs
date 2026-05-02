@@ -1,7 +1,10 @@
 {% extends "base.html" %}
 
 {% block content %}
-<main class="flex min-h-screen items-center justify-center bg-background p-4">
+<main class="relative flex min-h-screen items-center justify-center bg-background p-4">
+  <div class="absolute right-4 top-4">
+    {% include "theme_toggle.html" %}
+  </div>
   <section class="flex w-full max-w-xl flex-col gap-8 rounded-xl border border-surface-variant bg-surface-container p-8 shadow-[0_4px_24px_rgba(0,0,0,0.05)]">
     <header class="flex flex-col items-center gap-4 text-center">
       <div class="flex h-16 w-16 items-center justify-center rounded-full bg-primary-fixed">
