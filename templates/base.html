@@ -1,23 +1,119 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full">
+<html class="light" lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>
-      {% block title %}{{ layout.title }} - {{ layout.brand_name }}{% endblock
-      %}
+      {% block title %}{{ layout.title }} - {{ layout.brand_name }}{% endblock %}
     </title>
-    <meta name="color-scheme" content="dark" />
-    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+    <meta name="color-scheme" content="light" />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries,typography"></script>
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary-container": "#4a675f",
+              "surface-dim": "#d8dada",
+              surface: "#f8faf9",
+              "primary-fixed-dim": "#aecdc3",
+              tertiary: "#36503b",
+              error: "#ba1a1a",
+              "surface-bright": "#f8faf9",
+              "surface-container-high": "#e6e9e8",
+              "inverse-primary": "#aecdc3",
+              "surface-tint": "#47645c",
+              "surface-container-highest": "#e1e3e2",
+              "on-primary": "#ffffff",
+              outline: "#727976",
+              "secondary-container": "#c5e4f5",
+              "on-primary-container": "#c4e4da",
+              "inverse-surface": "#2e3131",
+              background: "#f8faf9",
+              "tertiary-container": "#4d6851",
+              "on-secondary-fixed-variant": "#2d4b58",
+              "error-container": "#ffdad6",
+              "secondary-fixed": "#c8e7f8",
+              "on-surface": "#191c1c",
+              "inverse-on-surface": "#eff1f0",
+              "surface-container-lowest": "#ffffff",
+              "on-primary-fixed": "#02201a",
+              "primary-fixed": "#c9e9df",
+              "on-tertiary-fixed": "#07200f",
+              "on-secondary-container": "#496775",
+              "on-surface-variant": "#414846",
+              "on-tertiary-fixed-variant": "#334d38",
+              primary: "#324f47",
+              "surface-variant": "#e1e3e2",
+              "surface-container-low": "#f2f4f3",
+              "on-error": "#ffffff",
+              "outline-variant": "#c1c8c4",
+              "on-tertiary-container": "#c7e5c9",
+              "on-secondary-fixed": "#001f2a",
+              "tertiary-fixed-dim": "#b0ceb2",
+              "surface-container": "#eceeed",
+              "on-secondary": "#ffffff",
+              secondary: "#456271",
+              "on-tertiary": "#ffffff",
+              "on-error-container": "#93000a",
+              "tertiary-fixed": "#cceace",
+              "secondary-fixed-dim": "#accbdc",
+              "on-primary-fixed-variant": "#304c45",
+              "on-background": "#191c1c",
+            },
+            borderRadius: {
+              DEFAULT: "0.25rem",
+              lg: "0.5rem",
+              xl: "0.75rem",
+              full: "9999px",
+            },
+            spacing: {
+              "margin-mobile": "16px",
+              "target-min": "48px",
+              gutter: "16px",
+              unit: "8px",
+              "margin-desktop": "24px",
+            },
+            fontFamily: {
+              "title-lg": ["Manrope", "sans-serif"],
+              "label-lg": ["Manrope", "sans-serif"],
+              "body-md": ["Manrope", "sans-serif"],
+              "label-md": ["Manrope", "sans-serif"],
+              "body-lg": ["Manrope", "sans-serif"],
+              "display-lg": ["Manrope", "sans-serif"],
+              "headline-lg": ["Manrope", "sans-serif"],
+            },
+            fontSize: {
+              "title-lg": ["22px", { lineHeight: "28px", letterSpacing: "0px", fontWeight: "500" }],
+              "label-lg": ["14px", { lineHeight: "20px", letterSpacing: "0.1px", fontWeight: "500" }],
+              "body-md": ["14px", { lineHeight: "20px", letterSpacing: "0.25px", fontWeight: "400" }],
+              "label-md": ["12px", { lineHeight: "16px", letterSpacing: "0.5px", fontWeight: "500" }],
+              "body-lg": ["16px", { lineHeight: "24px", letterSpacing: "0.5px", fontWeight: "400" }],
+              "display-lg": ["57px", { lineHeight: "64px", letterSpacing: "-0.25px", fontWeight: "400" }],
+              "headline-lg": ["32px", { lineHeight: "40px", letterSpacing: "0px", fontWeight: "600" }],
+            },
+          },
+        },
+      };
+    </script>
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+      rel="stylesheet"
+    />
     <script
       src="https://unpkg.com/htmx.org@1.9.12"
       integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2"
-      crossorigin="anonymous"
-      defer
-    ></script>
-    <script
-      src="https://unpkg.com/feather-icons@4.29.0/dist/feather.min.js"
-      integrity="sha384-RyE9TSx1shZZA6GS7TToIk1J7zY1mU8evbLDXYgOz4zgduwPFEtnHd1bswt8PG/u"
       crossorigin="anonymous"
       defer
     ></script>
@@ -29,103 +125,47 @@
     ></script>
     {% if let Some(csrf) = layout.csrf %}
     <meta name="csrf-token" content="{{ csrf.token }}" />
-    {% endif %} {% block head %}{% endblock %}
+    {% endif %}
+    <style>
+      body {
+        font-family: "Manrope", sans-serif;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .material-symbols-outlined {
+        font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+        line-height: 1;
+      }
+
+      .material-symbols-outlined.fill {
+        font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 24;
+      }
+
+      .code-font {
+        font-family: "Fira Code", monospace;
+      }
+
+      .preview-scroll::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+
+      .preview-scroll::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      .preview-scroll::-webkit-scrollbar-thumb {
+        background-color: #c1c8c4;
+        border-radius: 9999px;
+      }
+    </style>
+    {% block head %}{% endblock %}
   </head>
-  <body class="h-full bg-gray-950 font-sans text-gray-200 antialiased">
-    {% set nav_link = "inline-flex items-center gap-2 rounded-lg px-3 py-2
-    text-sm font-medium text-gray-300 transition hover:bg-gray-900/60
-    hover:text-white focus-visible:outline focus-visible:outline-2
-    focus-visible:outline-offset-2 focus-visible:outline-sky-500/40" %} {% set
-    nav_button = "inline-flex items-center justify-center gap-2 rounded-lg
-    border border-gray-800 bg-gray-900/60 px-3 py-2 text-sm font-semibold
-    text-gray-100 transition hover:border-sky-500/60 hover:text-white
-    focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
-    focus-visible:outline-sky-400" %} {% set nav_primary = "inline-flex
-    items-center justify-center gap-2 rounded-lg bg-sky-500 px-3 py-2 text-sm
-    font-semibold text-gray-950 shadow-sm transition hover:bg-sky-400
-    focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
-    focus-visible:outline-sky-200" %} {% set user_badge = "inline-flex
-    items-center gap-2 rounded-full border border-gray-800 bg-gray-900/80 px-3
-    py-1 text-xs font-semibold uppercase tracking-wide text-gray-300" %}
-
-    <div class="flex min-h-screen flex-col">
-      <header
-        class="sticky top-0 z-30 border-b border-gray-800 bg-gray-950/90 backdrop-blur"
-      >
-        <nav
-          class="mx-auto flex w-full max-w-6xl flex-col gap-4 px-6 py-5 md:flex-row md:items-center md:justify-between"
-        >
-          <div
-            class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6"
-          >
-            <a
-              href="/"
-              class="flex items-center gap-2 text-xl font-semibold text-white transition hover:text-sky-300"
-            >
-              {{ layout.brand_name }}
-            </a>
-            <div class="flex flex-wrap items-center gap-2 md:gap-3">
-              <a href="/" class="{{ nav_link }}">Home</a>
-              {% if let Some(user) = layout.current_user %}
-              <a href="/upload" class="{{ nav_link }}">Upload</a>
-              <a href="/paste" class="{{ nav_link }}">Pastebin</a>
-              {% if user.is_admin %}
-              <a href="/settings" class="{{ nav_link }}">Settings</a>
-              <a href="/admin/users" class="{{ nav_link }}">Users</a>
-              {% endif %} {% endif %}
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-3 md:justify-end">
-            {% if let Some(user) = layout.current_user %}
-            <span class="{{ user_badge }}">
-              <i data-feather="user" class="h-4 w-4"></i>
-              {{ user.username }}
-            </span>
-            <form method="post" action="/logout" class="inline-flex">
-              {% if let Some(csrf) = layout.csrf %}
-              <input type="hidden" name="csrf_token" value="{{ csrf.token }}" />
-              {% endif %}
-              <button type="submit" class="{{ nav_button }}">Log out</button>
-            </form>
-            {% else %} {% if layout.registration_open %}
-            <a href="/register" class="{{ nav_primary }}">Register</a>
-            {% endif %}
-            <a href="/login" class="{{ nav_button }}">Login</a>
-            {% endif %}
-          </div>
-        </nav>
-      </header>
-
-      <main class="flex-1">
-        <div class="mx-auto w-full max-w-6xl px-6">
-          {% block content %}{% endblock %}
-        </div>
-      </main>
-
-      <footer class="border-t border-gray-800 bg-gray-950/90">
-        <div
-          class="mx-auto flex w-full max-w-6xl flex-col items-center gap-2 px-6 py-8 text-xs text-gray-500 sm:flex-row sm:justify-between"
-        >
-          <span
-            >&copy; {{ layout.current_year }} {{ layout.brand_name }}. All
-            rights reserved.</span
-          >
-          <span class="text-gray-600">Secure sharing for teams.</span>
-        </div>
-      </footer>
-    </div>
+  <body class="bg-background text-on-background font-body-md antialiased">
+    {% block content %}{% endblock %}
 
     <script>
       "use strict";
-
-      const activateFeatherIcons = () => {
-        if (window.feather) {
-          window.feather.replace({ "aria-hidden": "true" });
-        }
-      };
-
-      document.addEventListener("DOMContentLoaded", activateFeatherIcons);
-      document.body.addEventListener("htmx:afterSwap", activateFeatherIcons);
 
       document.body.addEventListener("htmx:configRequest", (event) => {
         const tokenElement = document.querySelector('meta[name="csrf-token"]');

@@ -1,11 +1,11 @@
 <div
-    id="direct-link-output"
-    class="rounded-2xl border border-rose-500/60 bg-rose-500/10 p-4 text-sm text-rose-100 shadow-lg shadow-rose-500/20"
-    role="alert"
-    aria-live="assertive"
+  id="direct-link-output"
+  class="rounded-xl border border-error-container bg-error-container p-4 text-on-error-container"
+  role="alert"
+  aria-live="assertive"
 >
-    <p class="flex items-center gap-2">
-        <i data-feather="alert-circle" class="h-5 w-5 flex-shrink-0"></i>
-        <strong class="font-semibold">Error:</strong> {{ message }}
-    </p>
+  <p class="flex items-center gap-2 font-label-lg text-label-lg">
+    <span class="material-symbols-outlined">error</span>
+    <strong>Error:</strong> {{ message }}
+  </p>
 </div>

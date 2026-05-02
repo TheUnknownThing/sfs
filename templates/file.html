@@ -1,280 +1,182 @@
-{% extends "base.html" %} {% block content %} {% set card_base = "rounded-2xl
-border border-gray-800 bg-gray-900/70 p-6 shadow-xl shadow-gray-950/40
-backdrop-blur" %} {% set card_subtle = "rounded-2xl border border-gray-800
-bg-gray-900/60 p-5 text-gray-200 shadow-lg shadow-gray-950/40" %} {% set
-button_primary = "inline-flex items-center justify-center gap-2 rounded-lg
-bg-sky-500 px-4 py-2 text-sm font-semibold text-gray-950 shadow-sm transition
-hover:bg-sky-400 focus-visible:outline focus-visible:outline-2
-focus-visible:outline-offset-2 focus-visible:outline-sky-300" %} {% set
-button_outline = "inline-flex items-center justify-center gap-2 rounded-lg
-border border-gray-700 px-4 py-2 text-sm font-semibold text-gray-200 transition
-hover:border-sky-400 hover:text-white focus-visible:outline
-focus-visible:outline-2 focus-visible:outline-offset-2
-focus-visible:outline-sky-300" %} {% set button_danger = "inline-flex
-items-center justify-center gap-2 rounded-lg border border-rose-500/70 px-4 py-2
-text-sm font-semibold text-rose-200 transition hover:bg-rose-500/10
-focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
-focus-visible:outline-rose-400" %} {% set copy_button = "relative inline-flex
-items-center justify-center gap-2 rounded-lg border border-gray-700
-bg-gray-900/70 px-4 py-2 text-sm font-semibold text-gray-100 transition
-hover:border-sky-400 hover:text-white focus-visible:outline
-focus-visible:outline-2 focus-visible:outline-offset-2
-focus-visible:outline-sky-300 data-[copy-state=copied]:after:absolute
-data-[copy-state=copied]:after:-top-10 data-[copy-state=copied]:after:left-1/2
-data-[copy-state=copied]:after:-translate-x-1/2
-data-[copy-state=copied]:after:rounded-full
-data-[copy-state=copied]:after:bg-emerald-400
-data-[copy-state=copied]:after:px-3 data-[copy-state=copied]:after:py-1
-data-[copy-state=copied]:after:text-xs
-data-[copy-state=copied]:after:font-semibold
-data-[copy-state=copied]:after:text-gray-950
-data-[copy-state=copied]:after:shadow-lg
-data-[copy-state=copied]:after:content-['Copied!']
-data-[copy-state=copied]:after:opacity-100
-data-[copy-state=copied]:after:transition
-data-[copy-state=copied]:after:duration-300
-data-[copy-state=copied]:after:ease-out
-data-[copy-state=copied]:after:whitespace-nowrap" %}
+{% extends "base.html" %}
 
-<section class="mx-auto w-full max-w-4xl space-y-8 py-10">
-  <div class="space-y-2">
-    <h1 class="flex items-center gap-3 text-3xl font-semibold text-white">
-      <i data-feather="file-text" class="h-7 w-7 text-sky-400"></i>
-      File details
-    </h1>
-    <p class="text-sm text-gray-400">
-      Share this code so others can check the status and download the file
-      securely.
-    </p>
-  </div>
-
-  <article class="{{ card_base }} space-y-6">
-    <header class="flex items-start gap-3">
-      <i data-feather="file" class="h-6 w-6 flex-shrink-0 text-gray-400"></i>
-      <h2 class="break-words text-xl font-semibold text-white">
-        {{ original_name }}
-      </h2>
+{% block content %}
+<div class="flex min-h-screen bg-background text-on-background">
+  <div class="flex min-h-screen flex-1 flex-col">
+    <header class="flex h-20 w-full shrink-0 items-center justify-between border-b border-surface-variant bg-surface px-4 md:px-6">
+      <div class="flex min-w-0 items-center gap-4">
+        <a href="/" class="group flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-high">
+          <span class="material-symbols-outlined transition-transform group-hover:-translate-x-1">arrow_back</span>
+        </a>
+        <div class="min-w-0">
+          <h1 class="truncate font-title-lg text-title-lg text-on-surface">{{ original_name }}</h1>
+          <p class="font-body-md text-body-md text-on-surface-variant">Shared in {{ layout.brand_name }}</p>
+        </div>
+      </div>
+      <div class="hidden items-center gap-3 sm:flex">
+        <button type="button" class="flex h-12 items-center gap-2 rounded-full bg-secondary-container px-6 font-label-lg text-label-lg text-on-secondary-container transition-colors hover:bg-secondary-container/80" onclick="handleDownload(event, '{{ code }}')">
+          <span class="material-symbols-outlined fill">download</span>
+          Download File
+        </button>
+      </div>
     </header>
 
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-      <label
-        for="lookup-code"
-        class="flex items-center gap-2 font-semibold text-sky-200"
-      >
-        <span class="inline-flex items-center gap-2">
-          <i data-feather="hash" class="h-4 w-4"></i>
-          Code
-        </span>
-      </label>
-      <input
-        id="lookup-code"
-        type="text"
-        value="{{ code }}"
-        readonly
-        class="w-full rounded-lg border border-sky-400/50 bg-gray-950/60 px-3 py-2 font-mono text-lg font-semibold text-sky-100 focus:border-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-500/40"
-      />
-      <button
-        type="button"
-        class="{{ copy_button }} whitespace-nowrap"
-        data-copy
-        data-copy-target="#lookup-code"
-      >
-        <i data-feather="copy" aria-hidden="true" class="h-4 w-4"></i>
-        Copy
-      </button>
-    </div>
-
-    <dl
-      class="grid grid-cols-[minmax(160px,1fr)_minmax(0,2fr)] gap-x-6 gap-y-4 text-sm text-gray-200"
-    >
-      <div class="contents">
-        <dt class="flex items-center gap-2 font-semibold text-gray-400">
-          <i data-feather="file" class="h-4 w-4"></i>
-          File name
-        </dt>
-        <dd class="font-medium text-white">{{ original_name }}</dd>
-      </div>
-      <div class="contents">
-        <dt class="flex items-center gap-2 font-semibold text-gray-400">
-          <i data-feather="hard-drive" class="h-4 w-4"></i>
-          Size
-        </dt>
-        <dd><strong>{{ size_display }}</strong></dd>
-      </div>
-      <div class="contents">
-        <dt class="flex items-center gap-2 font-semibold text-gray-400">
-          <i data-feather="upload" class="h-4 w-4"></i>
-          Uploaded
-        </dt>
-        <dd><time class="text-gray-300">{{ created_display }}</time></dd>
-      </div>
-      <div class="contents">
-        <dt class="flex items-center gap-2 font-semibold text-gray-400">
-          <i data-feather="clock" class="h-4 w-4"></i>
-          Expires
-        </dt>
-        <dd>
-          {% if let Some(expires) = expires_display %}
-          <strong class="text-gray-300">{{ expires }}</strong>
-          {% else %}
-          <span class="text-gray-500">Never</span>
-          {% endif %}
-        </dd>
-      </div>
-      {% if let Some(kind) = content_type %}
-      <div class="contents">
-        <dt class="flex items-center gap-2 font-semibold text-gray-400">
-          <i data-feather="tag" class="h-4 w-4"></i>
-          Content type
-        </dt>
-        <dd>
-          <code class="rounded bg-gray-900/70 px-2 py-1 text-xs text-gray-200"
-            >{{ kind }}</code
-          >
-        </dd>
-      </div>
-      {% endif %} {% if let Some(signature) = checksum %}
-      <div class="contents">
-        <dt class="flex items-center gap-2 font-semibold text-gray-400">
-          <i data-feather="check-circle" class="h-4 w-4"></i>
-          Checksum
-        </dt>
-        <dd>
-          <code
-            class="block break-all rounded bg-gray-900/70 px-2 py-1 text-xs text-gray-200"
-            >{{ signature }}</code
-          >
-        </dd>
-      </div>
-      {% endif %}
-    </dl>
-
-    {% if can_preview %}
-    <section class="{{ card_subtle }} space-y-4" id="file-preview">
-      <header class="flex items-center justify-between">
-        <h3 class="flex items-center gap-2 text-lg font-semibold text-white">
-          <i data-feather="eye" class="h-5 w-5"></i>
-          File preview
-        </h3>
-        <div class="flex gap-2">
-          <button
-            type="button"
-            id="toggle-preview-mode"
-            class="{{ copy_button }}"
-            title="Toggle between Monaco editor and plain text preview"
-          >
-            <i data-feather="code" aria-hidden="true" class="h-4 w-4"></i>
-            <span id="preview-mode-text">Toggle Editor</span>
-          </button>
-          <button
-            type="button"
-            class="{{ copy_button }}"
-            data-copy
-            data-copy-target="#file-preview-content"
-          >
-            <i data-feather="copy" aria-hidden="true" class="h-4 w-4"></i>
-            Copy
-          </button>
+    <main class="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-6 p-4 pb-28 md:p-8 lg:flex-row lg:pb-8">
+      <div class="flex flex-1 flex-col gap-6">
+        <div class="rounded-xl border border-tertiary-container/20 bg-tertiary-container/10 p-4">
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 rounded-full bg-tertiary-container text-on-tertiary-container items-center justify-center">
+                <span class="material-symbols-outlined">key</span>
+              </div>
+              <div>
+                <p class="font-label-lg text-label-lg text-on-surface">Secure Share Code</p>
+                <p class="font-body-md text-body-md text-on-surface-variant">Share this code with your team.</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 rounded-lg border border-surface-variant bg-surface p-1 pl-4">
+              <input
+                id="lookup-code"
+                type="text"
+                value="{{ code }}"
+                readonly
+                class="w-full min-w-0 border-none bg-transparent p-0 font-mono text-title-lg font-semibold tracking-widest text-tertiary focus:ring-0 sm:w-52"
+              />
+              <button type="button" class="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-on-surface-variant transition-colors hover:bg-surface-container-high data-[copy-state=copied]:after:absolute data-[copy-state=copied]:after:-top-10 data-[copy-state=copied]:after:left-1/2 data-[copy-state=copied]:after:-translate-x-1/2 data-[copy-state=copied]:after:whitespace-nowrap data-[copy-state=copied]:after:rounded-full data-[copy-state=copied]:after:bg-tertiary-container data-[copy-state=copied]:after:px-3 data-[copy-state=copied]:after:py-1 data-[copy-state=copied]:after:text-xs data-[copy-state=copied]:after:font-semibold data-[copy-state=copied]:after:text-on-tertiary-container data-[copy-state=copied]:after:content-['Copied!']" data-copy data-copy-target="#lookup-code" aria-label="Copy code">
+                <span class="material-symbols-outlined">content_copy</span>
+              </button>
+            </div>
+          </div>
         </div>
-      </header>
-      <div class="rounded-lg bg-gray-950/60">
-        <div
-          id="monaco-editor-container"
-          style="height: 400px; display: none"
-        ></div>
-        <pre
-          id="file-preview-content"
-          class="max-h-96 overflow-auto whitespace-pre-wrap break-words font-mono text-sm text-gray-200 p-4"
-        >
-{{ preview_content }}</pre
-        >
-      </div>
-    </section>
-    {% else if preview_blocked_by_size %}
-    <p class="flex items-center gap-2 text-sm text-gray-400">
-      <i data-feather="info" class="h-4 w-4"></i>
-      File too large to preview (limit {{ preview_max_size_display }}).
-    </p>
-    {% endif %}
 
-    <footer>
-      <div class="button-group flex flex-col gap-3 sm:flex-row">
-        <button
-          type="button"
-          class="{{ button_primary }} sm:flex-1"
-          onclick="handleDownload(event, '{{ code }}')"
-        >
-          <i data-feather="download" class="h-4 w-4"></i>
-          Download file
-        </button>
-        <form
-          method="post"
-          action="/f/{{ code }}/link"
-          hx-post="/f/{{ code }}/link"
-          hx-target="#direct-link-output"
-          hx-swap="outerHTML"
-          hx-disabled-elt="button"
-          class="sm:flex-1"
-        >
-          {% if let Some(csrf) = layout.csrf %}
-          <input type="hidden" name="csrf_token" value="{{ csrf.token }}" />
-          {% endif %}
-          <button
-            type="submit"
-            class="{{ button_outline }} w-full justify-center"
-          >
-            <i data-feather="link" class="h-4 w-4"></i>
-            Generate link
-          </button>
-        </form>
-        {% if can_delete %}
-        <form
-          method="post"
-          action="/f/{{ code }}/delete"
-          class="sm:flex-1"
-          data-delete-form
-        >
-          {% if let Some(csrf) = layout.csrf %}
-          <input type="hidden" name="csrf_token" value="{{ csrf.token }}" />
-          {% endif %}
-          <button
-            type="submit"
-            class="{{ button_danger }} w-full justify-center"
-            data-delete-button
-          >
-            <i data-feather="trash-2" class="h-4 w-4"></i>
-            Delete file
-          </button>
-        </form>
+        {% if can_preview %}
+        <section class="flex min-h-[400px] flex-1 flex-col overflow-hidden rounded-2xl border border-surface-variant bg-surface-container-lowest">
+          <div class="flex h-12 items-center justify-between border-b border-surface-variant bg-surface-container-low px-4">
+            <div class="flex items-center gap-2 text-on-surface-variant">
+              <span class="material-symbols-outlined text-[20px]">code</span>
+              <span class="font-label-md text-label-md uppercase tracking-wider">Preview</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button type="button" id="toggle-preview-mode" class="flex h-9 items-center gap-2 rounded-full px-3 font-label-md text-label-md text-on-surface-variant transition-colors hover:bg-surface-variant" title="Toggle between Monaco editor and plain text preview">
+                <span class="material-symbols-outlined text-[20px]">code</span>
+                <span id="preview-mode-text">Editor</span>
+              </button>
+              <button type="button" class="flex h-9 w-9 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-variant" data-copy data-copy-target="#file-preview-content" aria-label="Copy preview">
+                <span class="material-symbols-outlined text-[20px]">content_copy</span>
+              </button>
+            </div>
+          </div>
+          <div class="relative flex-1 overflow-hidden bg-[#1E1E1E]">
+            <div id="monaco-editor-container" class="absolute inset-0 hidden"></div>
+            <pre id="file-preview-content" class="preview-scroll absolute inset-0 overflow-auto p-6 font-mono text-[14px] leading-relaxed text-[#D4D4D4]">{{ preview_content }}</pre>
+          </div>
+        </section>
+        {% else if preview_blocked_by_size %}
+        <section class="flex min-h-[280px] flex-col items-center justify-center rounded-2xl border border-surface-variant bg-surface-container-lowest p-8 text-center">
+          <span class="material-symbols-outlined mb-3 text-4xl text-outline">info</span>
+          <h2 class="font-title-lg text-title-lg text-on-surface">Preview unavailable</h2>
+          <p class="mt-2 font-body-md text-body-md text-on-surface-variant">File too large to preview (limit {{ preview_max_size_display }}).</p>
+        </section>
+        {% else %}
+        <section class="flex min-h-[280px] flex-col items-center justify-center rounded-2xl border border-surface-variant bg-surface-container-lowest p-8 text-center">
+          <span class="material-symbols-outlined mb-3 text-4xl text-outline">draft</span>
+          <h2 class="font-title-lg text-title-lg text-on-surface">No preview for this file</h2>
+          <p class="mt-2 font-body-md text-body-md text-on-surface-variant">Generate a link or download the file to open it locally.</p>
+        </section>
         {% endif %}
       </div>
-    </footer>
-  </article>
 
-  <div
-    id="direct-link-output"
-    class="{{ card_subtle }}"
-    role="region"
-    aria-live="polite"
-  >
-    <p class="flex items-center justify-center gap-2 text-sm text-gray-300">
-      <i data-feather="info" class="h-5 w-5"></i>
-      Generate a direct link to download this file directly.
-    </p>
+      <aside class="flex w-full shrink-0 flex-col gap-6 lg:w-[360px]">
+        <div class="flex flex-col gap-4 rounded-2xl bg-surface-container p-6">
+          <h2 class="font-title-lg text-title-lg text-on-surface">Share File</h2>
+          <p class="font-body-md text-body-md text-on-surface-variant">Generate a secure, expiring link to share this file.</p>
+          <div class="mt-2 space-y-3">
+            <button type="button" class="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-primary font-label-lg text-label-lg text-on-primary shadow-sm transition-colors hover:bg-primary/90" onclick="handleDownload(event, '{{ code }}')">
+              <span class="material-symbols-outlined text-[20px]">download</span>
+              Download File
+            </button>
+            <form method="post" action="/f/{{ code }}/link" hx-post="/f/{{ code }}/link" hx-target="#direct-link-output" hx-swap="outerHTML" hx-disabled-elt="button">
+              {% if let Some(csrf) = layout.csrf %}
+              <input type="hidden" name="csrf_token" value="{{ csrf.token }}" />
+              {% endif %}
+              <button type="submit" class="flex h-12 w-full items-center justify-center gap-2 rounded-full border border-outline-variant bg-surface font-label-lg text-label-lg text-primary transition-colors hover:bg-surface-container-high">
+                <span class="material-symbols-outlined text-[20px]">share</span>
+                Generate Link
+              </button>
+            </form>
+            {% if can_delete %}
+            <form method="post" action="/f/{{ code }}/delete" data-delete-form>
+              {% if let Some(csrf) = layout.csrf %}
+              <input type="hidden" name="csrf_token" value="{{ csrf.token }}" />
+              {% endif %}
+              <button type="submit" class="flex h-12 w-full items-center justify-center gap-2 rounded-full border border-error-container bg-error-container font-label-lg text-label-lg text-on-error-container transition-colors hover:brightness-95" data-delete-button>
+                <span class="material-symbols-outlined text-[20px]">delete</span>
+                Delete File
+              </button>
+            </form>
+            {% endif %}
+          </div>
+        </div>
+
+        <div id="direct-link-output" class="rounded-xl border border-surface-variant bg-surface-container-low p-4" role="region" aria-live="polite">
+          <p class="flex items-center justify-center gap-2 font-body-md text-body-md text-on-surface-variant">
+            <span class="material-symbols-outlined">info</span>
+            Generate a direct link to download this file directly.
+          </p>
+        </div>
+
+        <div class="rounded-2xl border border-surface-variant bg-surface-container-low p-6">
+          <h3 class="mb-6 flex items-center gap-2 font-label-lg text-label-lg text-on-surface">
+            <span class="material-symbols-outlined text-[20px] text-primary">info</span>
+            File Metadata
+          </h3>
+          <div class="space-y-5">
+            <div class="flex flex-col gap-1 border-b border-surface-variant pb-3">
+              <span class="font-label-md text-label-md text-on-surface-variant">Filename</span>
+              <span class="break-all font-body-md text-body-md font-medium text-on-surface">{{ original_name }}</span>
+            </div>
+            <div class="flex flex-col gap-1 border-b border-surface-variant pb-3">
+              <span class="font-label-md text-label-md text-on-surface-variant">Size</span>
+              <span class="font-body-md text-body-md font-medium text-on-surface">{{ size_display }}</span>
+            </div>
+            {% if let Some(kind) = content_type %}
+            <div class="flex flex-col gap-1 border-b border-surface-variant pb-3">
+              <span class="font-label-md text-label-md text-on-surface-variant">Type</span>
+              <span class="break-all font-body-md text-body-md font-medium text-on-surface">{{ kind }}</span>
+            </div>
+            {% endif %}
+            <div class="flex flex-col gap-1 border-b border-surface-variant pb-3">
+              <span class="font-label-md text-label-md text-on-surface-variant">Uploaded</span>
+              <span class="font-body-md text-body-md font-medium text-on-surface">{{ created_display }}</span>
+            </div>
+            {% if let Some(signature) = checksum %}
+            <div class="flex flex-col gap-1 border-b border-surface-variant pb-3">
+              <span class="font-label-md text-label-md text-on-surface-variant">Checksum (SHA-256)</span>
+              <span class="mt-1 break-all rounded-md border border-surface-variant bg-surface p-2 font-mono text-[11px] text-on-surface-variant">{{ signature }}</span>
+            </div>
+            {% endif %}
+            <div class="flex flex-col gap-1">
+              <span class="font-label-md text-label-md text-on-surface-variant">Expiration</span>
+              <div class="mt-1 flex items-center gap-2">
+                {% if let Some(expires) = expires_display %}
+                <span class="material-symbols-outlined text-[16px] text-error">timer</span>
+                <span class="font-body-md text-body-md font-medium text-error">{{ expires }}</span>
+                {% else %}
+                <span class="material-symbols-outlined text-[16px] text-secondary">all_inclusive</span>
+                <span class="font-body-md text-body-md font-medium text-secondary">Never</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </main>
   </div>
-</section>
-{% endblock %} {% block body_scripts %}
+</div>
+{% endblock %}
+
+{% block body_scripts %}
 <script>
-  function activateIcons() {
-    "use strict";
-
-    if (typeof activateFeatherIcons === "function") {
-      activateFeatherIcons();
-    } else if (window.feather) {
-      window.feather.replace();
-    }
-  }
-
   function resolveCsrfToken(scope) {
     "use strict";
 
@@ -308,26 +210,15 @@ data-[copy-state=copied]:after:whitespace-nowrap" %}
     });
 
     if (!response.ok) {
-      throw new Error(
-        `Failed to generate download link (status ${response.status})`
-      );
+      throw new Error(`Failed to generate download link (status ${response.status})`);
     }
 
     const html = (await response.text()).trim();
-    if (!html) {
-      throw new Error("Empty response while generating link");
-    }
-
     const template = document.createElement("template");
     template.innerHTML = html;
     const snippet = template.content.firstElementChild;
-
-    if (!snippet) {
-      throw new Error("Failed to parse download snippet");
-    }
-
-    const linkInput = snippet.querySelector('input[type="text"]');
-    if (!linkInput || !linkInput.value) {
+    const linkInput = snippet?.querySelector('input[type="text"]');
+    if (!snippet || !linkInput?.value) {
       throw new Error("Download link missing in response");
     }
 
@@ -343,12 +234,9 @@ data-[copy-state=copied]:after:whitespace-nowrap" %}
 
     try {
       button.disabled = true;
-      button.innerHTML = '<i data-feather="loader"></i> Generating...';
-      activateIcons();
+      button.innerHTML = '<span class="material-symbols-outlined">progress_activity</span> Generating...';
 
-      const siblingForm = button
-        .closest(".button-group")
-        ?.querySelector("form");
+      const siblingForm = button.closest("aside")?.querySelector("form");
       const csrfToken = resolveCsrfToken(siblingForm);
       const { snippet, directUrl } = await requestDirectLink(code, csrfToken);
 
@@ -356,26 +244,19 @@ data-[copy-state=copied]:after:whitespace-nowrap" %}
         directLinkContainer.replaceWith(snippet);
       }
 
-      activateIcons();
-
-      button.innerHTML = '<i data-feather="check"></i> Downloading...';
-      activateIcons();
+      button.innerHTML = '<span class="material-symbols-outlined">check</span> Downloading...';
       window.location.href = directUrl;
 
       setTimeout(() => {
         button.disabled = false;
         button.innerHTML = originalContent;
-        activateIcons();
       }, 2000);
     } catch (error) {
       console.error("Download error:", error);
-      button.innerHTML = '<i data-feather="alert-circle"></i> Error';
-      activateIcons();
-
+      button.innerHTML = '<span class="material-symbols-outlined">error</span> Error';
       setTimeout(() => {
         button.disabled = false;
         button.innerHTML = originalContent;
-        activateIcons();
       }, 2500);
     }
   }
@@ -397,8 +278,7 @@ data-[copy-state=copied]:after:whitespace-nowrap" %}
 
         if (button) {
           button.disabled = true;
-          button.innerHTML = '<i data-feather="loader"></i> Deleting...';
-          activateIcons();
+          button.innerHTML = '<span class="material-symbols-outlined">progress_activity</span> Deleting...';
         }
       });
     });
@@ -407,15 +287,12 @@ data-[copy-state=copied]:after:whitespace-nowrap" %}
   let monacoEditor = null;
   let isMonacoMode = false;
   let fileContent = "";
-
-  // Load Monaco editor on demand
   let monacoLoaded = false;
 
   async function loadMonacoEditor() {
     if (monacoLoaded) return;
 
     return new Promise((resolve) => {
-      // Set up Monaco editor
       require.config({
         paths: { vs: "https://unpkg.com/monaco-editor@0.52.2/min/vs" },
       });
@@ -431,7 +308,6 @@ data-[copy-state=copied]:after:whitespace-nowrap" %}
       monacoEditor.dispose();
     }
 
-    // Load Monaco editor if not already loaded
     await loadMonacoEditor();
 
     const container = document.getElementById("monaco-editor-container");
@@ -451,7 +327,6 @@ data-[copy-state=copied]:after:whitespace-nowrap" %}
     }
 
     const modelUri = monaco.Uri.file(filename);
-
     let model = monaco.editor.getModel(modelUri);
     if (model) {
       model.setValue(content);
@@ -460,9 +335,9 @@ data-[copy-state=copied]:after:whitespace-nowrap" %}
     }
 
     monacoEditor = monaco.editor.create(container, {
-      model: model, // Use the model
+      model: model,
       theme: "vs-dark",
-      readOnly: false,
+      readOnly: true,
       minimap: { enabled: true },
       scrollBeyondLastLine: false,
       fontSize: 14,
@@ -473,32 +348,29 @@ data-[copy-state=copied]:after:whitespace-nowrap" %}
     });
   }
 
-  // Toggle between Monaco editor and plain text preview
   async function togglePreviewMode() {
     const monacoContainer = document.getElementById("monaco-editor-container");
     const plainTextContainer = document.getElementById("file-preview-content");
     const modeText = document.getElementById("preview-mode-text");
 
+    if (!monacoContainer || !plainTextContainer) {
+      return;
+    }
+
     if (!isMonacoMode) {
-      // Switch to Monaco editor
-      // Initialize Monaco editor on first use
       if (!monacoEditor) {
         const toggleButton = document.getElementById("toggle-preview-mode");
-        toggleButton.innerHTML =
-          '<i data-feather="loader" class="h-4 w-4"></i> Loading...';
-        activateIcons();
-
+        if (toggleButton) {
+          toggleButton.innerHTML = '<span class="material-symbols-outlined text-[20px]">progress_activity</span><span id="preview-mode-text">Loading</span>';
+        }
         await initializeMonacoEditor(fileContent, "{{ original_name }}");
-
-        toggleButton.innerHTML =
-          '<i data-feather="code" class="h-4 w-4"></i> <span id="preview-mode-text">Monaco</span>';
-        activateIcons();
       }
 
-      monacoContainer.style.display = "block";
-      plainTextContainer.style.display = "none";
-      if (modeText) {
-        modeText.textContent = "Monaco";
+      monacoContainer.classList.remove("hidden");
+      plainTextContainer.classList.add("hidden");
+      const activeModeText = document.getElementById("preview-mode-text");
+      if (activeModeText) {
+        activeModeText.textContent = "Monaco";
       }
       isMonacoMode = true;
 
@@ -508,11 +380,10 @@ data-[copy-state=copied]:after:whitespace-nowrap" %}
         }
       }, 100);
     } else {
-      // Switch to plain text
-      monacoContainer.style.display = "none";
-      plainTextContainer.style.display = "block";
+      monacoContainer.classList.add("hidden");
+      plainTextContainer.classList.remove("hidden");
       if (modeText) {
-        modeText.textContent = "Toggle Editor";
+        modeText.textContent = "Editor";
       }
       isMonacoMode = false;
     }
@@ -536,9 +407,7 @@ data-[copy-state=copied]:after:whitespace-nowrap" %}
       const response = await fetch(directUrl);
 
       if (!response.ok) {
-        throw new Error(
-          `Failed to fetch file content (status ${response.status})`
-        );
+        throw new Error(`Failed to fetch file content (status ${response.status})`);
       }
 
       fileContent = await response.text();
@@ -551,8 +420,6 @@ data-[copy-state=copied]:after:whitespace-nowrap" %}
     } catch (error) {
       console.error("Preview loading error:", error);
       previewContainer.textContent = "Preview unavailable.";
-    } finally {
-      activateIcons();
     }
   }
 

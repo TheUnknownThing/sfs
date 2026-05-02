@@ -18,6 +18,7 @@ pub struct LayoutContext {
     pub title: String,
     pub brand_name: String,
     pub csrf: Option<CsrfMeta>,
+    #[allow(dead_code)]
     pub current_year: i32,
     pub current_user: Option<CurrentUserMeta>,
     pub registration_open: bool,

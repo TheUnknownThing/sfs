@@ -1,182 +1,213 @@
 {% extends "base.html" %}
 
 {% block content %}
-{% set card_base = "rounded-2xl border border-gray-800 bg-gray-900/70 p-6 shadow-xl shadow-gray-950/40 backdrop-blur" %}
-{% set alert_success = "rounded-2xl border border-emerald-500/60 bg-emerald-500/10 p-4 text-sm text-emerald-100 shadow-lg shadow-emerald-500/20" %}
-{% set alert_error = "rounded-2xl border border-rose-500/60 bg-rose-500/10 p-4 text-sm text-rose-100 shadow-lg shadow-rose-500/20" %}
-{% set button_primary = "inline-flex items-center justify-center gap-2 rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-gray-950 shadow-sm transition hover:bg-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300" %}
-{% set button_secondary = "inline-flex items-center justify-center gap-2 rounded-lg bg-gray-800 px-4 py-2 text-sm font-semibold text-gray-100 shadow-sm transition hover:bg-gray-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-300" %}
-{% set button_danger = "inline-flex items-center justify-center gap-2 rounded-lg border border-rose-500/70 px-4 py-2 text-sm font-semibold text-rose-200 transition hover:bg-rose-500/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-400" %}
-{% set input_class = "mt-2 w-full rounded-lg border border-gray-800 bg-gray-900/70 px-3 py-2 text-base text-gray-100 placeholder:text-gray-500 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40" %}
-
-<section class="mx-auto w-full max-w-6xl space-y-8 py-10">
-    <div class="space-y-2">
-        <h1 class="flex items-center gap-3 text-3xl font-semibold text-white">
-            <i data-feather="users" class="h-7 w-7 text-sky-400"></i>
-            User management
-        </h1>
-        <p class="text-sm text-gray-400">Manage access, grant administrators, and keep account details current.</p>
+<div class="flex h-screen w-full overflow-hidden bg-background text-on-background">
+  <nav aria-label="Sidebar" class="relative z-10 hidden h-screen w-72 shrink-0 flex-col gap-2 bg-neutral-50 px-4 py-6 md:flex">
+    <div class="px-4 pb-6">
+      <h1 class="text-lg font-black text-[#4A675F]">{{ layout.brand_name }}</h1>
+      <p class="text-sm font-semibold text-neutral-600">Secure Storage</p>
     </div>
-
-    {% if let Some(message) = success_message %}
-    <div class="{{ alert_success }}" role="status">
-        <strong class="font-semibold">✓ Success!</strong> {{ message }}
+    <div class="flex flex-1 flex-col gap-1 text-sm font-semibold">
+      <a class="flex items-center gap-3 rounded-full px-4 py-3 text-neutral-600 transition-all hover:bg-neutral-200/50" href="/">
+        <span class="material-symbols-outlined">folder</span>
+        Files
+      </a>
+      <a class="flex items-center gap-3 rounded-full px-4 py-3 text-neutral-600 transition-all hover:bg-neutral-200/50" href="/paste">
+        <span class="material-symbols-outlined">content_paste</span>
+        Pastebin
+      </a>
+      <a class="flex items-center gap-3 rounded-full px-4 py-3 text-neutral-600 transition-all hover:bg-neutral-200/50" href="/upload">
+        <span class="material-symbols-outlined">swap_horiz</span>
+        Transfers
+      </a>
+      <a class="flex items-center gap-3 rounded-full bg-[#4A675F]/10 px-4 py-3 text-[#4A675F] transition-all" href="/settings">
+        <span class="material-symbols-outlined fill">shield</span>
+        Security
+      </a>
     </div>
-    {% endif %}
+    <a href="/upload" class="mt-auto flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full bg-primary px-4 py-3 font-label-lg text-on-primary transition-opacity hover:opacity-90 active:scale-95">
+      <span class="material-symbols-outlined">upload</span>
+      New Upload
+    </a>
+  </nav>
 
-    {% if let Some(message) = general_error %}
-    <div class="{{ alert_error }}" role="alert">
-        <strong class="font-semibold">Error:</strong> {{ message }}
-    </div>
-    {% endif %}
-
-    <article class="{{ card_base }} space-y-6">
-        <header class="flex items-center gap-2 text-xl font-semibold text-white">
-            <i data-feather="user-plus" class="h-5 w-5 text-gray-400"></i>
-            Add user
-        </header>
-        <form method="post" action="/admin/users" class="space-y-6">
-            {% if let Some(csrf) = layout.csrf %}
-            <input type="hidden" name="csrf_token" value="{{ csrf.token }}" />
-            {% endif %}
-
-            <div class="grid gap-6 md:grid-cols-2">
-                <label for="add-user-username" class="md:col-span-2 flex flex-col text-sm font-semibold text-gray-200">
-                    Username
-                    <input
-                        id="add-user-username"
-                        name="username"
-                        type="text"
-                        autocomplete="username"
-                        value="{{ add_form.username }}"
-                        minlength="3"
-                        maxlength="64"
-                        required
-                        class="{{ input_class }}"
-                    />
-                    {% if let Some(err) = add_errors.username %}
-                    <small class="mt-2 text-sm font-medium text-rose-300">{{ err }}</small>
-                    {% else %}
-                    <small class="mt-2 text-sm text-gray-400">Lowercase letters, numbers, hyphen or period are recommended.</small>
-                    {% endif %}
-                </label>
-
-                <label for="add-user-password" class="flex flex-col text-sm font-semibold text-gray-200">
-                    Password
-                    <input
-                        id="add-user-password"
-                        name="password"
-                        type="password"
-                        autocomplete="new-password"
-                        minlength="12"
-                        required
-                        class="{{ input_class }}"
-                    />
-                    {% if let Some(err) = add_errors.password %}
-                    <small class="mt-2 text-sm font-medium text-rose-300">{{ err }}</small>
-                    {% else %}
-                    <small class="mt-2 text-sm text-gray-400">Minimum 12 characters.</small>
-                    {% endif %}
-                </label>
-
-                <label for="add-user-password-confirm" class="flex flex-col text-sm font-semibold text-gray-200">
-                    Confirm password
-                    <input
-                        id="add-user-password-confirm"
-                        name="password_confirm"
-                        type="password"
-                        autocomplete="new-password"
-                        minlength="12"
-                        required
-                        class="{{ input_class }}"
-                    />
-                    {% if let Some(err) = add_errors.password_confirm %}
-                    <small class="mt-2 text-sm font-medium text-rose-300">{{ err }}</small>
-                    {% endif %}
-                </label>
-            </div>
-
-            <label for="add-user-is-admin" class="flex items-center gap-3 text-sm font-medium text-gray-200">
-                <input type="checkbox" id="add-user-is-admin" name="is_admin" {% if add_form.is_admin %}checked{% endif %} class="h-4 w-4 rounded border-gray-700 bg-gray-900 text-sky-500 focus:ring-sky-400" />
-                Grant administrator privileges
-            </label>
-
-            <div class="flex justify-end">
-                <button type="submit" class="{{ button_primary }}">
-                    <i data-feather="user-plus" class="h-4 w-4"></i>
-                    Create user
-                </button>
-            </div>
+  <main class="relative flex h-full flex-1 flex-col overflow-hidden bg-background">
+    <header class="relative z-10 flex h-16 w-full items-center justify-between bg-neutral-50 px-6">
+      <div class="flex items-center gap-2 md:hidden">
+        <span class="material-symbols-outlined text-[#4A675F]">menu</span>
+        <span class="text-xl font-bold tracking-tight text-[#4A675F]">{{ layout.brand_name }}</span>
+      </div>
+      <div class="hidden w-96 max-w-md items-center rounded-full bg-surface-container-low px-4 py-2 transition-all focus-within:bg-surface focus-within:ring-2 focus-within:ring-primary md:flex">
+        <span class="material-symbols-outlined mr-2 text-on-surface-variant">search</span>
+        <input class="w-full border-none bg-transparent p-0 font-body-md text-on-surface outline-none placeholder:text-on-surface-variant focus:ring-0" placeholder="Search users, files, or logs..." type="text" />
+      </div>
+      <div class="flex items-center gap-2 text-[#4A675F]">
+        <a href="/settings" class="flex min-h-[48px] min-w-[48px] items-center justify-center rounded-full p-2 transition-colors hover:bg-neutral-100" aria-label="Settings">
+          <span class="material-symbols-outlined">settings</span>
+        </a>
+        <form method="post" action="/logout">
+          {% if let Some(csrf) = layout.csrf %}
+          <input type="hidden" name="csrf_token" value="{{ csrf.token }}" />
+          {% endif %}
+          <button class="flex min-h-[48px] min-w-[48px] items-center justify-center rounded-full p-2 transition-colors hover:bg-neutral-100" type="submit" aria-label="Log out">
+            <span class="material-symbols-outlined">account_circle</span>
+          </button>
         </form>
-    </article>
+      </div>
+    </header>
 
-    <section class="space-y-4">
-        <h2 class="flex items-center gap-2 text-2xl font-semibold text-white">
-            <i data-feather="shield" class="h-6 w-6 text-gray-400"></i>
-            Existing users
-        </h2>
-        {% if users.is_empty() %}
-        <p class="text-sm text-gray-400">No users found.</p>
-        {% else %}
-        <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {% for user in users %}
-            <article class="{{ card_base }} space-y-4">
-                <header class="flex items-start justify-between gap-3">
-                    <div>
-                        <h3 class="text-lg font-semibold text-white">{{ user.username }}</h3>
-                        <!--<small class="text-sm text-gray-400">Created {{ user.created_display }}</small>-->
-                    </div>
-                    {% if user.is_admin %}
-                    <span class="inline-flex items-center gap-2 rounded-full bg-sky-500/15 px-3 py-1 text-xs font-semibold text-sky-200 ring-1 ring-inset ring-sky-500/40">
-                        <i data-feather="star" class="h-4 w-4"></i>
-                        Admin
-                    </span>
-                    {% endif %}
-                </header>
-
-                <p class="text-sm text-gray-300">
-                    {% if let Some(last_seen) = user.last_login_display %}
-                    Last login: {{ last_seen }}
-                    {% else %}
-                    Last login: never
-                    {% endif %}
-                </p>
-
-                <details class="rounded-xl border border-gray-800 bg-gray-900/60 p-4">
-                    <summary class="cursor-pointer text-sm font-semibold text-gray-200">Reset password</summary>
-                    <form method="post" action="/admin/users/{{ user.id }}/reset-password" class="mt-4 space-y-4">
-                        {% if let Some(csrf) = layout.csrf %}
-                        <input type="hidden" name="csrf_token" value="{{ csrf.token }}" />
-                        {% endif %}
-
-                        <label class="flex flex-col text-sm font-semibold text-gray-200">
-                            New password
-                            <input type="password" name="new_password" minlength="12" required autocomplete="new-password" class="{{ input_class }}" />
-                        </label>
-                        <label class="flex flex-col text-sm font-semibold text-gray-200">
-                            Confirm password
-                            <input type="password" name="confirm_password" minlength="12" required autocomplete="new-password" class="{{ input_class }}" />
-                        </label>
-                        <button type="submit" class="{{ button_secondary }}">
-                            <i data-feather="refresh-cw" class="h-4 w-4"></i>
-                            Reset password
-                        </button>
-                    </form>
-                </details>
-
-                <form method="post" action="/admin/users/{{ user.id }}/delete" onsubmit="return confirm('Delete user {{ user.username }}? This action cannot be undone.');">
-                    {% if let Some(csrf) = layout.csrf %}
-                    <input type="hidden" name="csrf_token" value="{{ csrf.token }}" />
-                    {% endif %}
-                    <button type="submit" class="{{ button_danger }} w-full justify-center">
-                        <i data-feather="trash-2" class="h-4 w-4"></i>
-                        Delete user
-                    </button>
-                </form>
-            </article>
-            {% endfor %}
+    <div class="flex-1 overflow-y-auto p-margin-mobile md:p-margin-desktop">
+      <div class="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div>
+          <h1 class="mb-1 font-headline-lg text-headline-lg text-on-background">User Management</h1>
+          <p class="font-body-lg text-body-lg text-on-surface-variant">Review and manage access levels across your organization.</p>
         </div>
+        <a href="#add-user" class="flex min-h-[48px] items-center justify-center gap-2 rounded-full bg-primary-container px-6 py-2.5 font-label-lg text-on-primary-container transition-all hover:brightness-110">
+          <span class="material-symbols-outlined text-[20px]">person_add</span>
+          Add User
+        </a>
+      </div>
+
+      {% if let Some(message) = success_message %}
+      <div class="mb-6 rounded-xl border border-tertiary-container/20 bg-tertiary-container/10 p-4 text-on-surface" role="status">
+        <strong class="font-semibold">Success!</strong> {{ message }}
+      </div>
+      {% endif %}
+
+      {% if let Some(message) = general_error %}
+      <div class="mb-6 rounded-xl border border-error-container bg-error-container p-4 text-on-error-container" role="alert">
+        <strong class="font-semibold">Error:</strong> {{ message }}
+      </div>
+      {% endif %}
+
+      <section id="add-user" class="mb-8 rounded-xl border border-surface-variant bg-surface-container-lowest p-6 shadow-sm">
+        <h2 class="mb-6 flex items-center gap-2 font-title-lg text-title-lg text-on-surface">
+          <span class="material-symbols-outlined text-primary">person_add</span>
+          Add User
+        </h2>
+        <form method="post" action="/admin/users" class="grid gap-6 md:grid-cols-2">
+          {% if let Some(csrf) = layout.csrf %}
+          <input type="hidden" name="csrf_token" value="{{ csrf.token }}" />
+          {% endif %}
+          <label class="flex flex-col gap-2 font-label-lg text-label-lg text-on-surface md:col-span-2" for="add-user-username">
+            Username
+            <input id="add-user-username" name="username" type="text" autocomplete="username" value="{{ add_form.username }}" minlength="3" maxlength="64" required class="min-h-target-min rounded-lg border-none bg-surface-container-highest px-4 py-3 font-body-lg text-body-lg text-on-surface focus:bg-surface-bright focus:ring-2 focus:ring-primary" />
+            {% if let Some(err) = add_errors.username %}
+            <small class="font-label-md text-label-md text-error">{{ err }}</small>
+            {% endif %}
+          </label>
+          <label class="flex flex-col gap-2 font-label-lg text-label-lg text-on-surface" for="add-user-password">
+            Password
+            <input id="add-user-password" name="password" type="password" autocomplete="new-password" minlength="12" required class="min-h-target-min rounded-lg border-none bg-surface-container-highest px-4 py-3 font-body-lg text-body-lg text-on-surface focus:bg-surface-bright focus:ring-2 focus:ring-primary" />
+            {% if let Some(err) = add_errors.password %}
+            <small class="font-label-md text-label-md text-error">{{ err }}</small>
+            {% endif %}
+          </label>
+          <label class="flex flex-col gap-2 font-label-lg text-label-lg text-on-surface" for="add-user-password-confirm">
+            Confirm password
+            <input id="add-user-password-confirm" name="password_confirm" type="password" autocomplete="new-password" minlength="12" required class="min-h-target-min rounded-lg border-none bg-surface-container-highest px-4 py-3 font-body-lg text-body-lg text-on-surface focus:bg-surface-bright focus:ring-2 focus:ring-primary" />
+            {% if let Some(err) = add_errors.password_confirm %}
+            <small class="font-label-md text-label-md text-error">{{ err }}</small>
+            {% endif %}
+          </label>
+          <label class="flex items-center justify-between rounded-lg bg-surface-container p-4 md:col-span-2">
+            <span>
+              <span class="block font-label-lg text-label-lg text-on-surface">System Admin</span>
+              <span class="mt-1 block font-label-md text-label-md text-on-surface-variant">Grant administrator privileges</span>
+            </span>
+            <span class="relative inline-flex cursor-pointer items-center">
+              <input class="peer sr-only" type="checkbox" id="add-user-is-admin" name="is_admin" {% if add_form.is_admin %}checked{% endif %} />
+              <span class="h-6 w-11 rounded-full bg-surface-variant after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:border-white"></span>
+            </span>
+          </label>
+          <div class="flex justify-end md:col-span-2">
+            <button type="submit" class="flex min-h-[48px] items-center justify-center gap-2 rounded-full bg-primary px-6 py-2.5 font-label-lg text-on-primary transition-colors hover:bg-primary/90">
+              <span class="material-symbols-outlined">person_add</span>
+              Create User
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section class="flex w-full flex-col gap-2">
+        <div class="mb-2 hidden grid-cols-12 gap-4 border-b border-surface-variant px-6 py-3 font-label-lg text-label-lg text-on-surface-variant md:grid">
+          <div class="col-span-4">User Details</div>
+          <div class="col-span-2">Role</div>
+          <div class="col-span-2">Status</div>
+          <div class="col-span-3">Last Activity</div>
+          <div class="col-span-1 text-right">Actions</div>
+        </div>
+
+        {% if users.is_empty() %}
+        <div class="rounded-xl bg-surface-container-lowest p-6 text-center font-body-md text-body-md text-on-surface-variant">No users found.</div>
+        {% else %}
+        {% for user in users %}
+        <div class="group grid grid-cols-1 gap-4 rounded-xl bg-surface-container-lowest px-4 py-4 transition-colors hover:bg-surface-container-low md:grid-cols-12 md:items-center md:px-6">
+          <div class="col-span-1 flex items-center gap-4 md:col-span-4">
+            <div class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface-container text-primary">
+              <span class="material-symbols-outlined">person</span>
+            </div>
+            <div class="flex min-w-0 flex-col">
+              <span class="truncate font-title-lg text-[16px] font-medium leading-tight text-on-surface">{{ user.username }}</span>
+              <span class="font-body-md text-[13px] text-on-surface-variant">Created {{ user.created_display }}</span>
+            </div>
+          </div>
+          <div class="col-span-1 flex items-center md:col-span-2">
+            <span class="font-body-md text-on-surface">{% if user.is_admin %}System Admin{% else %}User{% endif %}</span>
+          </div>
+          <div class="col-span-1 flex items-center md:col-span-2">
+            <div class="inline-flex items-center gap-1.5 rounded-full bg-tertiary-container px-3 py-1 font-label-md text-on-tertiary-container">
+              <span class="h-1.5 w-1.5 rounded-full bg-on-tertiary-container"></span>
+              Active
+            </div>
+          </div>
+          <div class="col-span-1 flex items-center font-body-md text-[13px] text-on-surface-variant md:col-span-3">
+            {% if let Some(last_seen) = user.last_login_display %}
+            {{ last_seen }}
+            {% else %}
+            Never
+            {% endif %}
+          </div>
+          <div class="col-span-1 flex items-center gap-2 md:justify-end">
+            <details class="relative">
+              <summary class="flex min-h-[48px] min-w-[48px] cursor-pointer list-none items-center justify-center rounded-full p-2 text-on-surface-variant transition-colors hover:bg-surface-container-highest">
+                <span class="material-symbols-outlined">more_vert</span>
+              </summary>
+              <div class="absolute right-0 z-20 mt-2 w-72 rounded-xl border border-surface-variant bg-surface p-4 shadow-[0_12px_32px_rgba(0,0,0,0.12)]">
+                <form method="post" action="/admin/users/{{ user.id }}/reset-password" class="space-y-3">
+                  {% if let Some(csrf) = layout.csrf %}
+                  <input type="hidden" name="csrf_token" value="{{ csrf.token }}" />
+                  {% endif %}
+                  <label class="flex flex-col gap-1 font-label-md text-label-md text-on-surface">
+                    New password
+                    <input type="password" name="new_password" minlength="12" required autocomplete="new-password" class="min-h-target-min rounded-lg border-none bg-surface-container px-3 py-2 font-body-md text-body-md focus:ring-2 focus:ring-primary" />
+                  </label>
+                  <label class="flex flex-col gap-1 font-label-md text-label-md text-on-surface">
+                    Confirm password
+                    <input type="password" name="confirm_password" minlength="12" required autocomplete="new-password" class="min-h-target-min rounded-lg border-none bg-surface-container px-3 py-2 font-body-md text-body-md focus:ring-2 focus:ring-primary" />
+                  </label>
+                  <button type="submit" class="flex h-10 w-full items-center justify-center gap-2 rounded-full bg-surface-container-high px-4 font-label-md text-label-md text-on-surface transition-colors hover:bg-surface-container-highest">
+                    <span class="material-symbols-outlined text-[18px]">refresh</span>
+                    Reset password
+                  </button>
+                </form>
+                <form method="post" action="/admin/users/{{ user.id }}/delete" class="mt-3" onsubmit="return confirm('Delete user {{ user.username }}? This action cannot be undone.');">
+                  {% if let Some(csrf) = layout.csrf %}
+                  <input type="hidden" name="csrf_token" value="{{ csrf.token }}" />
+                  {% endif %}
+                  <button type="submit" class="flex h-10 w-full items-center justify-center gap-2 rounded-full bg-error-container px-4 font-label-md text-label-md text-on-error-container transition-colors hover:brightness-95">
+                    <span class="material-symbols-outlined text-[18px]">delete</span>
+                    Delete user
+                  </button>
+                </form>
+              </div>
+            </details>
+          </div>
+        </div>
+        {% endfor %}
         {% endif %}
-    </section>
-</section>
+      </section>
+    </div>
+  </main>
+</div>
 {% endblock %}

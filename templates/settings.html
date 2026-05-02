@@ -1,171 +1,210 @@
 {% extends "base.html" %}
 
 {% block content %}
-{% set card_base = "rounded-2xl border border-gray-800 bg-gray-900/70 p-6 shadow-xl shadow-gray-950/40 backdrop-blur" %}
-{% set alert_success = "rounded-2xl border border-emerald-500/60 bg-emerald-500/10 p-4 text-sm text-emerald-100 shadow-lg shadow-emerald-500/20" %}
-{% set alert_error = "rounded-2xl border border-rose-500/60 bg-rose-500/10 p-4 text-sm text-rose-100 shadow-lg shadow-rose-500/20" %}
-{% set button_primary = "inline-flex items-center justify-center gap-2 rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-gray-950 shadow-sm transition hover:bg-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300" %}
-{% set input_class = "mt-2 w-full rounded-lg border border-gray-800 bg-gray-900/70 px-3 py-2 text-base text-gray-100 placeholder:text-gray-500 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40" %}
-
-<section class="mx-auto w-full max-w-4xl space-y-6 py-10">
-    <div class="space-y-2">
-        <h1 class="flex items-center gap-3 text-3xl font-semibold text-white">
-            <i data-feather="settings" class="h-7 w-7 text-sky-400"></i>
-            Admin Settings
-        </h1>
-        <p class="text-sm text-gray-400">Configure global application preferences, security, and quotas.</p>
+<div class="flex min-h-screen flex-col bg-background text-on-background md:flex-row">
+  <aside class="sticky top-0 hidden h-screen w-72 shrink-0 flex-col gap-2 border-r border-neutral-200 bg-neutral-50 px-4 py-6 md:flex">
+    <div class="mb-6 px-4">
+      <h1 class="text-lg font-black text-[#4A675F]">{{ layout.brand_name }}</h1>
+      <p class="text-sm font-medium text-neutral-500">Secure Storage</p>
     </div>
+    <nav class="flex flex-1 flex-col gap-1 text-sm font-semibold">
+      <a class="flex items-center gap-3 rounded-full px-4 py-3 text-neutral-600 transition-all hover:bg-neutral-200/50" href="/">
+        <span class="material-symbols-outlined">folder</span>
+        Files
+      </a>
+      <a class="flex items-center gap-3 rounded-full px-4 py-3 text-neutral-600 transition-all hover:bg-neutral-200/50" href="/paste">
+        <span class="material-symbols-outlined">content_paste</span>
+        Pastebin
+      </a>
+      <a class="flex items-center gap-3 rounded-full px-4 py-3 text-neutral-600 transition-all hover:bg-neutral-200/50" href="/upload">
+        <span class="material-symbols-outlined">swap_horiz</span>
+        Transfers
+      </a>
+      <a class="flex items-center gap-3 rounded-full bg-[#4A675F]/10 px-4 py-3 text-[#4A675F] transition-all" href="/settings">
+        <span class="material-symbols-outlined fill">shield</span>
+        Security
+      </a>
+      <a class="flex items-center gap-3 rounded-full px-4 py-3 text-neutral-600 transition-all hover:bg-neutral-200/50" href="/admin/users">
+        <span class="material-symbols-outlined">group</span>
+        Users
+      </a>
+    </nav>
+    <a href="/upload" class="mt-auto flex min-h-target-min w-full items-center justify-center gap-2 rounded-full bg-primary-container px-4 py-3 font-label-lg text-label-lg text-on-primary-container transition-opacity hover:opacity-90">
+      <span class="material-symbols-outlined">add</span>
+      New Upload
+    </a>
+  </aside>
 
-    {% if let Some(message) = success_message %}
-    <div class="{{ alert_success }}" role="status">
-        <strong class="font-semibold">✓ Success!</strong> {{ message }}
-    </div>
-    {% endif %}
+  <main class="flex min-h-screen flex-1 flex-col">
+    <header class="flex h-16 w-full shrink-0 items-center justify-between border-b border-neutral-200 bg-neutral-50 px-6 md:hidden">
+      <div class="flex items-center gap-4">
+        <span class="text-xl font-bold tracking-tight text-[#4A675F]">{{ layout.brand_name }}</span>
+      </div>
+      <div class="flex items-center gap-4 text-[#4A675F]">
+        <a href="/admin/users" class="flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-neutral-100">
+          <span class="material-symbols-outlined">group</span>
+        </a>
+      </div>
+    </header>
 
-    {% if let Some(message) = general_error %}
-    <div class="{{ alert_error }}" role="alert">
+    <form method="post" action="/settings" class="mx-auto flex w-full max-w-5xl flex-1 flex-col bg-surface p-margin-mobile md:p-margin-desktop">
+      <div class="mb-8">
+        <h1 class="mb-2 font-headline-lg text-headline-lg text-on-surface">Admin Settings</h1>
+        <p class="font-body-lg text-body-lg text-on-surface-variant">System-wide configuration and security policies.</p>
+      </div>
+
+      {% if let Some(message) = success_message %}
+      <div class="mb-6 rounded-xl border border-tertiary-container/20 bg-tertiary-container/10 p-4 text-on-surface" role="status">
+        <strong class="font-semibold">Success!</strong> {{ message }}
+      </div>
+      {% endif %}
+
+      {% if let Some(message) = general_error %}
+      <div class="mb-6 rounded-xl border border-error-container bg-error-container p-4 text-on-error-container" role="alert">
         <strong class="font-semibold">Error:</strong> {{ message }}
-    </div>
-    {% endif %}
+      </div>
+      {% endif %}
 
-    <article class="{{ card_base }}">
-        <form method="post" action="/settings" class="space-y-8">
-            <section class="space-y-4 border-b border-gray-800 pb-6 last:border-b-0 last:pb-0">
-                <h3 class="flex items-center gap-2 text-lg font-semibold text-white">
-                    <i data-feather="eye" class="h-5 w-5 text-gray-400"></i>
-                    Appearance
-                </h3>
-                <label for="ui_brand_name" class="flex flex-col text-sm font-semibold text-gray-200">
-                    Brand name
-                    <input
-                        type="text"
-                        id="ui_brand_name"
-                        name="ui_brand_name"
-                        value="{{ form.ui_brand_name }}"
-                        minlength="2"
-                        maxlength="80"
-                        required
-                        class="{{ input_class }}"
-                    />
-                    {% if let Some(err) = field_errors.ui_brand_name %}
-                    <small class="mt-2 text-sm font-medium text-rose-300">{{ err }}</small>
-                    {% else %}
-                    <small class="mt-2 text-sm text-gray-400">Displayed in the header and page titles.</small>
-                    {% endif %}
-                </label>
-            </section>
-
-            <section class="space-y-4 border-b border-gray-800 pb-6 last:border-b-0 last:pb-0">
-                <h3 class="flex items-center gap-2 text-lg font-semibold text-white">
-                    <i data-feather="upload-cloud" class="h-5 w-5 text-gray-400"></i>
-                    Upload Settings
-                </h3>
-                <label for="max_file_size_bytes" class="flex flex-col text-sm font-semibold text-gray-200">
-                    Maximum upload size (bytes)
-                    <input
-                        type="number"
-                        id="max_file_size_bytes"
-                        name="max_file_size_bytes"
-                        value="{{ form.max_file_size_bytes }}"
-                        min="1048576"
-                        max="5368709120"
-                        step="1"
-                        required
-                        class="{{ input_class }}"
-                    />
-                    {% if let Some(err) = field_errors.max_file_size_bytes %}
-                    <small class="mt-2 text-sm font-medium text-rose-300">{{ err }}</small>
-                    {% else %}
-                    <small class="mt-2 text-sm text-gray-400">Enter the maximum file size in bytes (e.g. 52428800 for 50 MB).</small>
-                    {% endif %}
-                </label>
-
-                <label for="default_expiration_hours" class="flex flex-col text-sm font-semibold text-gray-200">
-                    Default expiration (hours)
-                    <input
-                        type="number"
-                        id="default_expiration_hours"
-                        name="default_expiration_hours"
-                        value="{{ form.default_expiration_hours }}"
-                        min="1"
-                        max="2160"
-                        required
-                        class="{{ input_class }}"
-                    />
-                    {% if let Some(err) = field_errors.default_expiration_hours %}
-                    <small class="mt-2 text-sm font-medium text-rose-300">{{ err }}</small>
-                    {% else %}
-                    <small class="mt-2 text-sm text-gray-400">New uploads inherit this expiration unless overridden.</small>
-                    {% endif %}
-                </label>
-            </section>
-
-            <section class="space-y-4 border-b border-gray-800 pb-6 last:border-b-0 last:pb-0">
-                <h3 class="flex items-center gap-2 text-lg font-semibold text-white">
-                    <i data-feather="link" class="h-5 w-5 text-gray-400"></i>
-                    Link Settings
-                </h3>
-                <label for="direct_link_ttl_minutes" class="flex flex-col text-sm font-semibold text-gray-200">
-                    Direct link lifetime (minutes)
-                    <input
-                        type="number"
-                        id="direct_link_ttl_minutes"
-                        name="direct_link_ttl_minutes"
-                        value="{{ form.direct_link_ttl_minutes }}"
-                        min="1"
-                        max="1440"
-                        required
-                        class="{{ input_class }}"
-                    />
-                    {% if let Some(err) = field_errors.direct_link_ttl_minutes %}
-                    <small class="mt-2 text-sm font-medium text-rose-300">{{ err }}</small>
-                    {% else %}
-                    <small class="mt-2 text-sm text-gray-400">Controls how long new direct download tokens remain valid.</small>
-                    {% endif %}
-                </label>
-            </section>
-
-            <section class="space-y-4">
-                <h3 class="flex items-center gap-2 text-lg font-semibold text-white">
-                    <i data-feather="shield" class="h-5 w-5 text-gray-400"></i>
-                    Security
-                </h3>
-                <label for="allow_anonymous_download" class="flex items-center gap-3 text-sm font-medium text-gray-200">
-                    <input
-                        type="checkbox"
-                        id="allow_anonymous_download"
-                        name="allow_anonymous_download"
-                        {% if form.allow_anonymous_download %}checked{% endif %}
-                        class="h-4 w-4 rounded border-gray-700 bg-gray-900 text-sky-500 focus:ring-sky-400"
-                    />
-                    Allow anonymous file downloads
-                </label>
-                <small class="pl-7 text-sm text-gray-400">When disabled, only authenticated users may download files.</small>
-
-                <label for="allow_registration" class="flex items-center gap-3 text-sm font-medium text-gray-200">
-                    <input
-                        type="checkbox"
-                        id="allow_registration"
-                        name="allow_registration"
-                        {% if form.allow_registration %}checked{% endif %}
-                        class="h-4 w-4 rounded border-gray-700 bg-gray-900 text-sky-500 focus:ring-sky-400"
-                    />
-                    Allow users to self-register
-                </label>
-                <small class="pl-7 text-sm text-gray-400">When disabled, only administrators can create new accounts.</small>
-            </section>
-
-            {% if let Some(csrf) = layout.csrf %}
-            <input type="hidden" name="csrf_token" value="{{ csrf.token }}" />
-            {% endif %}
-
-            <div class="flex justify-end">
-                <button type="submit" class="{{ button_primary }}">
-                    <i data-feather="save" class="h-4 w-4"></i>
-                    Save settings
-                </button>
+      <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div class="flex flex-col gap-6 rounded-xl border border-surface-variant bg-surface-container-low p-6 lg:col-span-3 sm:flex-row sm:items-center sm:justify-between">
+          <div class="flex items-center gap-4">
+            <div class="flex h-12 w-12 items-center justify-center rounded-full bg-primary-fixed text-on-primary-fixed">
+              <span class="material-symbols-outlined text-3xl">check_circle</span>
             </div>
-        </form>
-    </article>
-</section>
+            <div>
+              <h2 class="font-title-lg text-title-lg text-on-surface">All Systems Nominal</h2>
+              <p class="font-body-md text-body-md text-on-surface-variant">Configuration is stored server-side and protected by admin access.</p>
+            </div>
+          </div>
+          <a href="/admin/users" class="flex min-h-target-min items-center justify-center rounded-full border border-outline px-4 py-2 font-label-lg text-label-lg text-primary transition-colors hover:bg-surface-variant">
+            Manage Users
+          </a>
+        </div>
+
+        <section class="flex flex-col gap-6 lg:col-span-2">
+          <div class="rounded-xl border border-surface-variant bg-surface-container-lowest p-6 shadow-sm">
+            <h3 class="mb-6 border-b border-surface-variant pb-4 font-title-lg text-title-lg text-on-surface">General Configuration</h3>
+            <div class="flex flex-col gap-6">
+              <div>
+                <label class="mb-2 block font-label-lg text-label-lg text-on-surface-variant" for="ui_brand_name">Brand Name</label>
+                <input
+                  class="min-h-target-min w-full rounded-lg border-none bg-surface-container-highest px-4 py-3 font-body-lg text-body-lg text-on-surface transition-colors focus:bg-surface-bright focus:ring-2 focus:ring-primary"
+                  type="text"
+                  id="ui_brand_name"
+                  name="ui_brand_name"
+                  value="{{ form.ui_brand_name }}"
+                  minlength="2"
+                  maxlength="80"
+                  required
+                />
+                {% if let Some(err) = field_errors.ui_brand_name %}
+                <p class="mt-1 font-body-md text-body-md text-error">{{ err }}</p>
+                {% else %}
+                <p class="mt-1 font-body-md text-body-md text-outline">Displayed in the app shell and page titles.</p>
+                {% endif %}
+              </div>
+
+              <div>
+                <label class="mb-2 block font-label-lg text-label-lg text-on-surface-variant" for="max_file_size_bytes">Maximum upload size (bytes)</label>
+                <div class="flex flex-col gap-4 sm:flex-row sm:items-center">
+                  <input
+                    class="min-h-target-min w-full rounded-lg border-none bg-surface-container-highest px-4 py-3 font-body-lg text-body-lg text-on-surface transition-colors focus:bg-surface-bright focus:ring-2 focus:ring-primary sm:w-64"
+                    type="number"
+                    id="max_file_size_bytes"
+                    name="max_file_size_bytes"
+                    value="{{ form.max_file_size_bytes }}"
+                    min="1048576"
+                    max="5368709120"
+                    step="1"
+                    required
+                  />
+                  <span class="font-body-md text-body-md text-on-surface-variant">Bytes per transaction</span>
+                </div>
+                {% if let Some(err) = field_errors.max_file_size_bytes %}
+                <p class="mt-1 font-body-md text-body-md text-error">{{ err }}</p>
+                {% endif %}
+              </div>
+
+              <div>
+                <label class="mb-2 block font-label-lg text-label-lg text-on-surface-variant" for="default_expiration_hours">Default expiration (hours)</label>
+                <input
+                  class="min-h-target-min w-full rounded-lg border-none bg-surface-container-highest px-4 py-3 font-body-lg text-body-lg text-on-surface transition-colors focus:bg-surface-bright focus:ring-2 focus:ring-primary sm:w-64"
+                  type="number"
+                  id="default_expiration_hours"
+                  name="default_expiration_hours"
+                  value="{{ form.default_expiration_hours }}"
+                  min="1"
+                  max="2160"
+                  required
+                />
+                {% if let Some(err) = field_errors.default_expiration_hours %}
+                <p class="mt-1 font-body-md text-body-md text-error">{{ err }}</p>
+                {% endif %}
+              </div>
+
+              <div>
+                <label class="mb-2 block font-label-lg text-label-lg text-on-surface-variant" for="direct_link_ttl_minutes">Direct link lifetime (minutes)</label>
+                <input
+                  class="min-h-target-min w-full rounded-lg border-none bg-surface-container-highest px-4 py-3 font-body-lg text-body-lg text-on-surface transition-colors focus:bg-surface-bright focus:ring-2 focus:ring-primary sm:w-64"
+                  type="number"
+                  id="direct_link_ttl_minutes"
+                  name="direct_link_ttl_minutes"
+                  value="{{ form.direct_link_ttl_minutes }}"
+                  min="1"
+                  max="1440"
+                  required
+                />
+                {% if let Some(err) = field_errors.direct_link_ttl_minutes %}
+                <p class="mt-1 font-body-md text-body-md text-error">{{ err }}</p>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="flex flex-col gap-6">
+          <div class="h-full rounded-xl border border-surface-variant bg-surface-container-lowest p-6 shadow-sm">
+            <h3 class="mb-6 border-b border-surface-variant pb-4 font-title-lg text-title-lg text-on-surface">Security Policies</h3>
+            <div class="flex flex-col gap-4">
+              <label class="flex items-center justify-between rounded-lg bg-surface-container p-4">
+                <span>
+                  <span class="block font-label-lg text-label-lg text-on-surface">Public Sharing</span>
+                  <span class="mt-1 block font-label-md text-label-md text-on-surface-variant">Allow unauthenticated downloads</span>
+                </span>
+                <span class="relative inline-flex cursor-pointer items-center">
+                  <input class="peer sr-only" type="checkbox" id="allow_anonymous_download" name="allow_anonymous_download" {% if form.allow_anonymous_download %}checked{% endif %} />
+                  <span class="h-6 w-11 rounded-full bg-surface-variant after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:border-white"></span>
+                </span>
+              </label>
+
+              <label class="flex items-center justify-between rounded-lg bg-surface-container p-4">
+                <span>
+                  <span class="block font-label-lg text-label-lg text-on-surface">Self Registration</span>
+                  <span class="mt-1 block font-label-md text-label-md text-on-surface-variant">Allow users to create accounts</span>
+                </span>
+                <span class="relative inline-flex cursor-pointer items-center">
+                  <input class="peer sr-only" type="checkbox" id="allow_registration" name="allow_registration" {% if form.allow_registration %}checked{% endif %} />
+                  <span class="h-6 w-11 rounded-full bg-surface-variant after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:border-white"></span>
+                </span>
+              </label>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      {% if let Some(csrf) = layout.csrf %}
+      <input type="hidden" name="csrf_token" value="{{ csrf.token }}" />
+      {% endif %}
+
+      <div class="mt-8 flex justify-end gap-4">
+        <a href="/" class="flex min-h-target-min items-center rounded-full px-6 py-2 font-label-lg text-label-lg text-on-surface transition-colors hover:bg-surface-container">
+          Cancel
+        </a>
+        <button type="submit" class="min-h-target-min rounded-full bg-primary px-6 py-2 font-label-lg text-label-lg text-on-primary shadow-sm transition-colors hover:bg-primary/90">
+          Save Changes
+        </button>
+      </div>
+    </form>
+  </main>
+</div>
 {% endblock %}

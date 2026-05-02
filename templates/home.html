@@ -1,143 +1,215 @@
 {% extends "base.html" %}
 
 {% block content %}
-{% set card_base = "rounded-2xl border border-gray-800 bg-gray-900/70 p-6 shadow-xl shadow-gray-950/40 backdrop-blur" %}
-{% set card_success = "rounded-2xl border border-emerald-500/60 bg-emerald-500/10 p-4 text-emerald-100 shadow-lg shadow-emerald-500/20 backdrop-blur" %}
-{% set button_primary = "inline-flex items-center justify-center gap-2 rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-gray-950 shadow-sm transition hover:bg-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300" %}
-{% set button_outline = "inline-flex items-center justify-center gap-2 rounded-lg border border-gray-700 px-4 py-2 text-sm font-semibold text-gray-200 transition hover:border-sky-400 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300" %}
-{% set button_subtle = "inline-flex items-center justify-center gap-2 rounded-lg bg-gray-800 px-4 py-2 text-sm font-semibold text-gray-100 shadow-sm transition hover:bg-gray-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-300" %}
-
-<div class="mx-auto flex w-full max-w-3xl flex-col gap-8 py-10">
-  {% if let Some(message) = flash_message %}
-  <article class="{{ card_success }}" role="status">
-    <p class="flex items-center gap-2 text-sm font-medium">
-      <i data-feather="check-circle" class="h-4 w-4"></i>
-      {{ message }}
-    </p>
-  </article>
-  {% endif %}
-
-  <article class="{{ card_base }} space-y-4">
-    <div>
-      <h2 class="text-xl font-semibold text-white">Upload files</h2>
-      <p class="mt-1 text-sm text-gray-400">
-        Share files securely with a single code.
-      </p>
+<div class="flex min-h-screen flex-col bg-background text-on-background md:flex-row">
+  <aside class="hidden w-72 shrink-0 flex-col gap-2 border-r border-neutral-200 bg-neutral-50 px-4 py-6 md:flex">
+    <div class="mb-8 px-4">
+      <h2 class="text-lg font-black tracking-tight text-[#4A675F]">{{ layout.brand_name }}</h2>
+      <p class="font-label-md text-label-md text-neutral-600">Secure Storage</p>
     </div>
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+    {% if layout.current_user.is_some() %}
+    <a href="/upload" class="mb-6 flex h-target-min w-full items-center justify-center gap-2 rounded-full bg-primary font-label-lg text-label-lg text-on-primary shadow-sm transition-opacity hover:opacity-90">
+      <span class="material-symbols-outlined">add</span>
+      New Upload
+    </a>
+    {% else %}
+    <a href="/login" class="mb-6 flex h-target-min w-full items-center justify-center gap-2 rounded-full bg-primary font-label-lg text-label-lg text-on-primary shadow-sm transition-opacity hover:opacity-90">
+      <span class="material-symbols-outlined">login</span>
+      Sign In
+    </a>
+    {% endif %}
+    <nav class="flex flex-1 flex-col gap-2">
+      <a class="flex items-center gap-3 rounded-full bg-[#4A675F]/10 px-4 py-3 font-label-lg text-label-lg text-[#4A675F] transition-all" href="/">
+        <span class="material-symbols-outlined fill">folder</span>
+        Files
+      </a>
       {% if layout.current_user.is_some() %}
-      <a class="{{ button_primary }}" href="/upload">
-        <i data-feather="upload" class="h-4 w-4"></i>
-        Upload a file
+      <a class="flex items-center gap-3 rounded-full px-4 py-3 font-label-lg text-label-lg text-neutral-600 transition-all hover:bg-neutral-200/50" href="/paste">
+        <span class="material-symbols-outlined">content_paste</span>
+        Pastebin
       </a>
-      <a class="{{ button_outline }}" href="/paste">
-        <i data-feather="edit-3" class="h-4 w-4"></i>
-        Create a paste
+      <a class="flex items-center gap-3 rounded-full px-4 py-3 font-label-lg text-label-lg text-neutral-600 transition-all hover:bg-neutral-200/50" href="/upload">
+        <span class="material-symbols-outlined">swap_horiz</span>
+        Transfers
       </a>
-      {% else %}
-      <p class="text-sm text-gray-400">Please log in to upload.</p>
-      <a class="{{ button_primary }}" href="/login">
-        <i data-feather="log-in" class="h-4 w-4"></i>
-        Log in
+      {% if let Some(user) = layout.current_user %}
+      {% if user.is_admin %}
+      <a class="flex items-center gap-3 rounded-full px-4 py-3 font-label-lg text-label-lg text-neutral-600 transition-all hover:bg-neutral-200/50" href="/settings">
+        <span class="material-symbols-outlined">shield</span>
+        Security
       </a>
       {% endif %}
-    </div>
-  </article>
+      {% endif %}
+      {% endif %}
+    </nav>
+  </aside>
 
-  <article class="{{ card_base }} space-y-6">
-    <div>
-      <h2 class="text-xl font-semibold text-white">Fetch files</h2>
-      <p class="mt-2 text-sm text-gray-400">
-        Enter a share code (e.g. <code class="rounded bg-gray-900/80 px-2 py-1 text-xs font-semibold text-gray-200">ABCD-EF12</code>)
-      </p>
-    </div>
-    <form
-      id="code-lookup-form"
-      action="/f/"
-      method="get"
-      novalidate
-      class="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left"
-    >
-      <div class="code-input-grid flex flex-wrap items-center justify-center gap-2 sm:gap-3" role="group" aria-label="File code">
-        {% for index in 0..8 %}
-        {% if index == 4 %}
-        <span class="code-input-separator flex h-12 items-center justify-center px-1 text-2xl font-semibold text-gray-600 sm:h-14" aria-hidden="true">-</span>
-        {% endif %}
-        <div class="code-input-wrapper relative group" data-index="{{ index }}" data-filled="false">
-          <input
-            class="code-input h-12 w-10 rounded-xl border border-gray-800 bg-gray-900/80 text-center text-lg font-semibold uppercase tracking-[0.35em] text-white transition focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40 group-data-[filled=true]:border-sky-400/70 sm:h-14 sm:w-12 sm:text-xl"
-            type="text"
-            inputmode="text"
-            autocomplete="one-time-code"
-            autocapitalize="characters"
-            maxlength="1"
-            aria-label="Code character {{ index + 1 }}"
-            style="letter-spacing: 0.05rem;"
-          />
-        </div>
-        {% endfor %}
+  <main class="relative flex min-w-0 flex-1 flex-col">
+    <header class="sticky top-0 z-50 flex h-16 w-full items-center justify-between border-b border-neutral-200 bg-neutral-50 px-6">
+      <div class="flex items-center gap-8">
+        <div class="text-xl font-bold tracking-tight text-[#4A675F] md:hidden">{{ layout.brand_name }}</div>
+        <div class="hidden text-xl font-bold tracking-tight text-[#4A675F] md:block">{{ layout.brand_name }}</div>
+        <nav class="hidden h-full items-center gap-1 md:flex">
+          <a class="flex h-16 items-center border-b-2 border-[#4A675F] px-4 font-label-lg text-label-lg font-bold text-[#4A675F] transition-colors hover:bg-neutral-100" href="/">Files</a>
+          {% if layout.current_user.is_some() %}
+          <a class="flex h-16 items-center px-4 font-label-lg text-label-lg text-neutral-600 transition-colors hover:bg-neutral-100" href="/paste">Pastebin</a>
+          <a class="flex h-16 items-center px-4 font-label-lg text-label-lg text-neutral-600 transition-colors hover:bg-neutral-100" href="/upload">Transfers</a>
+          {% if let Some(user) = layout.current_user %}
+          {% if user.is_admin %}
+          <a class="flex h-16 items-center px-4 font-label-lg text-label-lg text-neutral-600 transition-colors hover:bg-neutral-100" href="/settings">Security</a>
+          {% endif %}
+          {% endif %}
+          {% endif %}
+        </nav>
       </div>
-      <input
-        type="hidden"
-        name="code"
-        id="code-lookup-hidden"
-        pattern="^[A-Za-z0-9]{4}-[A-Za-z0-9]{4}$"
-        required
-      />
-      <button type="submit" class="{{ button_primary }}">
-        <i data-feather="arrow-right" class="h-4 w-4"></i>
-        Fetch file
-      </button>
-      <p class="text-sm text-gray-400">Paste the code or type one character per box.</p>
-    </form>
-  </article>
-</div>
+      <div class="flex items-center gap-2 text-[#4A675F]">
+        {% if let Some(user) = layout.current_user %}
+        <a href="/settings" class="flex h-target-min w-target-min items-center justify-center rounded-full transition-colors hover:bg-neutral-100">
+          <span class="material-symbols-outlined">settings</span>
+        </a>
+        <form method="post" action="/logout" class="hidden sm:block">
+          {% if let Some(csrf) = layout.csrf %}
+          <input type="hidden" name="csrf_token" value="{{ csrf.token }}" />
+          {% endif %}
+          <button class="flex h-target-min items-center justify-center gap-2 rounded-full px-4 font-label-lg text-label-lg transition-colors hover:bg-neutral-100" type="submit">
+            <span class="material-symbols-outlined">logout</span>
+            {{ user.username }}
+          </button>
+        </form>
+        {% else %}
+        {% if layout.registration_open %}
+        <a href="/register" class="hidden h-target-min items-center rounded-full px-4 font-label-lg text-label-lg text-[#4A675F] transition-colors hover:bg-neutral-100 sm:flex">Register</a>
+        {% endif %}
+        <a href="/login" class="flex h-target-min items-center rounded-full bg-primary px-5 font-label-lg text-label-lg text-on-primary shadow-sm transition-opacity hover:opacity-90">Login</a>
+        {% endif %}
+      </div>
+    </header>
 
-{% if layout.current_user.is_some() %}
-<section class="mx-auto mt-12 w-full max-w-6xl space-y-6">
-  <div>
-    <h2 class="flex items-center gap-3 text-xl font-semibold text-white">
-      <i data-feather="clock" class="h-6 w-6 text-gray-400"></i>
-      Recent uploads
-    </h2>
-  </div>
-  {% if recent_uploads.is_empty() %}
-  <article class="{{ card_base }} text-center text-sm text-gray-400">
-    No uploads yet. <a href="/upload" class="text-sky-400 transition hover:text-sky-300">Upload your first file</a> to get started.
-  </article>
-  {% else %}
-  <div class="overflow-hidden rounded-2xl border border-gray-800 bg-gray-900/60 shadow-xl shadow-gray-950/40">
-    <table role="grid" class="min-w-full divide-y divide-gray-800 text-left text-sm text-gray-200">
-      <thead class="bg-gray-900/80 text-xs font-semibold uppercase tracking-wide text-gray-400">
-        <tr>
-          <th scope="col" class="px-4 py-3">File name</th>
-          <th scope="col" class="px-4 py-3">Code</th>
-          <th scope="col" class="px-4 py-3">Size</th>
-          <th scope="col" class="px-4 py-3">Uploaded</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-gray-800">
-        {% for upload in recent_uploads %}
-        <tr class="hover:bg-gray-900/70">
-          <td class="px-4 py-3">
-            <a href="/f/{{ upload.code }}" class="inline-flex items-center gap-2 font-medium text-white transition hover:text-sky-300">
-              <i data-feather="file" class="h-4 w-4 text-gray-400"></i>
-              {{ upload.original_name }}
-            </a>
-          </td>
-          <td class="px-4 py-3">
-            <code class="rounded bg-gray-900/80 px-2 py-1 text-xs font-semibold text-gray-200">{{ upload.code }}</code>
-          </td>
-          <td class="px-4 py-3">{{ upload.size_display }}</td>
-          <td class="px-4 py-3"><time class="text-gray-400">{{ upload.created_display }}</time></td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% endif %}
-</section>
-{% endif %}
+    <div class="flex-1 overflow-y-auto px-margin-mobile py-8 pb-28 md:px-margin-desktop md:pb-28">
+      <div class="mx-auto flex max-w-5xl flex-col gap-8 md:gap-12">
+        {% if let Some(message) = flash_message %}
+        <article class="rounded-xl border border-tertiary-container/20 bg-tertiary-container/10 p-4 text-on-surface" role="status">
+          <p class="flex items-center gap-3 font-label-lg text-label-lg">
+            <span class="material-symbols-outlined text-tertiary">check_circle</span>
+            {{ message }}
+          </p>
+        </article>
+        {% endif %}
+
+        <section class="flex flex-col items-center justify-center rounded-[2rem] bg-surface-container-lowest px-6 py-8 text-center md:px-12 md:py-12">
+          <div class="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-secondary-container text-on-secondary-container">
+            <span class="material-symbols-outlined text-[32px]">key</span>
+          </div>
+          <h1 class="mb-2 font-headline-lg text-headline-lg text-on-surface">Access Shared Content</h1>
+          <p class="mb-8 max-w-md font-body-lg text-body-lg text-on-surface-variant">
+            Enter the 8-character share code provided to you to securely view or download files.
+          </p>
+          <form id="code-lookup-form" action="/f/" method="get" novalidate class="flex flex-col items-center gap-6">
+            <div class="flex justify-center gap-2 sm:gap-3" dir="ltr" role="group" aria-label="File code">
+              {% for index in 0..8 %}
+              {% if index == 4 %}
+              <div class="flex w-2 items-center justify-center font-bold text-outline-variant sm:w-4">-</div>
+              {% endif %}
+              <input
+                class="code-input h-14 w-10 rounded-lg border-none bg-surface-container-highest text-center font-title-lg text-title-lg uppercase text-on-surface transition-all placeholder:text-outline-variant focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary sm:h-16 sm:w-12"
+                type="text"
+                inputmode="text"
+                autocomplete="one-time-code"
+                autocapitalize="characters"
+                maxlength="1"
+                placeholder="•"
+                aria-label="Code character {{ index + 1 }}"
+              />
+              {% endfor %}
+            </div>
+            <input type="hidden" name="code" id="code-lookup-hidden" pattern="^[A-Za-z0-9]{4}-[A-Za-z0-9]{4}$" required />
+            <button type="submit" class="flex h-target-min items-center gap-2 rounded-full bg-primary px-8 font-label-lg text-label-lg text-on-primary shadow-sm transition-all hover:bg-surface-tint">
+              <span class="material-symbols-outlined text-[20px]">search</span>
+              Lookup Code
+            </button>
+          </form>
+        </section>
+
+        {% if layout.current_user.is_some() %}
+        <section>
+          <div class="mb-4 flex items-center justify-between px-2">
+            <h2 class="font-title-lg text-title-lg text-on-surface">Recent Activity</h2>
+            <a href="/upload" class="rounded-full px-4 py-2 font-label-lg text-label-lg text-primary transition-colors hover:bg-surface-container-high">View All</a>
+          </div>
+          {% if recent_uploads.is_empty() %}
+          <div class="rounded-2xl bg-surface-container-lowest p-6 text-center font-body-md text-body-md text-on-surface-variant">
+            No uploads yet. <a href="/upload" class="font-label-lg text-primary hover:underline">Upload your first file</a> to get started.
+          </div>
+          {% else %}
+          <div class="overflow-hidden rounded-2xl bg-surface-container-lowest">
+            <div class="hidden grid-cols-12 gap-4 border-b border-surface-variant bg-surface-container-low px-6 py-3 font-label-md text-label-md text-on-surface-variant sm:grid">
+              <div class="col-span-6 md:col-span-5">Name</div>
+              <div class="hidden md:col-span-2 md:block">Size</div>
+              <div class="col-span-3">Uploaded</div>
+              <div class="col-span-3 text-right md:col-span-2">Status</div>
+            </div>
+            <div class="divide-y divide-surface-variant">
+              {% for upload in recent_uploads %}
+              <a href="/f/{{ upload.code }}" class="grid grid-cols-1 gap-4 px-4 py-4 transition-colors hover:bg-surface-container-low sm:grid-cols-12 sm:items-center sm:px-6">
+                <div class="col-span-1 flex min-w-0 items-center gap-4 sm:col-span-6 md:col-span-5">
+                  <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-secondary-container text-on-secondary-container">
+                    <span class="material-symbols-outlined">description</span>
+                  </div>
+                  <div class="min-w-0">
+                    <p class="truncate font-label-lg text-label-lg text-on-surface">{{ upload.original_name }}</p>
+                    <p class="mt-0.5 font-body-md text-body-md text-on-surface-variant sm:hidden">{{ upload.size_display }} • {{ upload.created_display }}</p>
+                  </div>
+                </div>
+                <div class="hidden font-body-md text-body-md text-on-surface-variant md:col-span-2 md:block">{{ upload.size_display }}</div>
+                <div class="hidden font-body-md text-body-md text-on-surface-variant sm:col-span-3 sm:block">{{ upload.created_display }}</div>
+                <div class="hidden justify-end sm:col-span-3 sm:flex md:col-span-2">
+                  <span class="inline-flex rounded-md bg-primary-fixed px-2.5 py-1 text-xs font-medium text-on-primary-fixed">Active</span>
+                </div>
+              </a>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+        </section>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if layout.current_user.is_some() %}
+    <a href="/upload" class="fixed bottom-24 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-on-primary shadow-lg transition-shadow hover:shadow-xl md:bottom-8 md:right-8 md:h-auto md:w-auto md:gap-2 md:rounded-[1.25rem] md:px-6 md:py-4">
+      <span class="material-symbols-outlined text-3xl md:text-[24px]">cloud_upload</span>
+      <span class="hidden font-label-lg text-label-lg md:inline">Upload</span>
+    </a>
+    {% endif %}
+
+    <nav class="fixed bottom-0 z-50 flex h-20 w-full items-center justify-around border-t border-surface-variant bg-surface-container px-2 md:hidden">
+      <a class="flex h-full w-16 flex-col items-center justify-center gap-1 text-on-surface" href="/">
+        <div class="flex h-8 w-16 items-center justify-center rounded-full bg-secondary-container">
+          <span class="material-symbols-outlined fill">folder</span>
+        </div>
+        <span class="font-label-md text-[10px]">Files</span>
+      </a>
+      <a class="flex h-full w-16 flex-col items-center justify-center gap-1 text-on-surface-variant hover:text-on-surface" href="/paste">
+        <div class="flex h-8 w-16 items-center justify-center rounded-full transition-colors hover:bg-surface-variant">
+          <span class="material-symbols-outlined">content_paste</span>
+        </div>
+        <span class="font-label-md text-[10px]">Pastebin</span>
+      </a>
+      <a class="flex h-full w-16 flex-col items-center justify-center gap-1 text-on-surface-variant hover:text-on-surface" href="/upload">
+        <div class="flex h-8 w-16 items-center justify-center rounded-full transition-colors hover:bg-surface-variant">
+          <span class="material-symbols-outlined">swap_horiz</span>
+        </div>
+        <span class="font-label-md text-[10px]">Transfers</span>
+      </a>
+      <a class="flex h-full w-16 flex-col items-center justify-center gap-1 text-on-surface-variant hover:text-on-surface" href="/settings">
+        <div class="flex h-8 w-16 items-center justify-center rounded-full transition-colors hover:bg-surface-variant">
+          <span class="material-symbols-outlined">shield</span>
+        </div>
+        <span class="font-label-md text-[10px]">Security</span>
+      </a>
+    </nav>
+  </main>
+</div>
 {% endblock %}
 
 {% block body_scripts %}
@@ -159,13 +231,10 @@
 
     const updateHiddenValue = () => {
       const raw = inputs.map((input) => input.value).join("");
-      if (raw.length === inputs.length) {
-        hiddenField.value = `${raw.slice(0, hyphenIndex)}-${raw.slice(
-          hyphenIndex
-        )}`;
-      } else {
-        hiddenField.value = "";
-      }
+      hiddenField.value =
+        raw.length === inputs.length
+          ? `${raw.slice(0, hyphenIndex)}-${raw.slice(hyphenIndex)}`
+          : "";
     };
 
     const focusInput = (index) => {
@@ -173,12 +242,6 @@
       if (target) {
         target.focus();
         target.select();
-      }
-    };
-
-    const markWrapperState = (input) => {
-      if (input && input.parentElement?.classList) {
-        input.parentElement.dataset.filled = input.value ? "true" : "false";
       }
     };
 
@@ -194,38 +257,26 @@
         }
         inputs[index].value = sanitizedChar;
         inputs[index].setCustomValidity("");
-        markWrapperState(inputs[index]);
         index += 1;
       });
       updateHiddenValue();
-      if (index < inputs.length) {
-        focusInput(index);
-      } else {
-        focusInput(inputs.length - 1);
-      }
+      focusInput(Math.min(index, inputs.length - 1));
     };
-
-    inputs.forEach((input) => markWrapperState(input));
 
     inputs.forEach((input, index) => {
       input.addEventListener("focus", () => input.select());
 
       input.addEventListener("input", (event) => {
         const value = sanitize(event.target.value);
-
         if (value.length > 1) {
           fillFrom(index, value.split(""));
           return;
         }
-
         event.target.value = value;
         event.target.setCustomValidity("");
-        markWrapperState(event.target);
-
         if (value && index < inputs.length - 1) {
           focusInput(index + 1);
         }
-
         updateHiddenValue();
       });
 
@@ -235,17 +286,11 @@
           focusInput(index - 1);
           return;
         }
-
-        if (
-          event.key === "ArrowLeft" &&
-          index > 0 &&
-          input.selectionStart === 0
-        ) {
+        if (event.key === "ArrowLeft" && index > 0 && input.selectionStart === 0) {
           event.preventDefault();
           focusInput(index - 1);
           return;
         }
-
         if (
           event.key === "ArrowRight" &&
           index < inputs.length - 1 &&
@@ -263,16 +308,14 @@
         }
         event.preventDefault();
         const text = sanitize(clipboardData.getData("text"));
-        if (!text) {
-          return;
+        if (text) {
+          fillFrom(index, text.split(""));
         }
-        fillFrom(index, text.split(""));
       });
     });
 
     form.addEventListener("submit", (event) => {
       updateHiddenValue();
-
       if (!hiddenField.value) {
         event.preventDefault();
         const firstEmpty = inputs.find((input) => !input.value);
@@ -283,14 +326,9 @@
         }
         return;
       }
-
-      inputs.forEach((input) => input.setCustomValidity(""));
       event.preventDefault();
-      const targetCode = hiddenField.value;
-      window.location.href = `/f/${encodeURIComponent(targetCode)}`;
+      window.location.href = `/f/${encodeURIComponent(hiddenField.value)}`;
     });
-
-    updateHiddenValue();
   })();
 </script>
 {% endblock %}

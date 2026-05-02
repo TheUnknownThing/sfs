@@ -1,70 +1,131 @@
 {% extends "base.html" %}
 
 {% block content %}
-{% set card_base = "rounded-2xl border border-gray-800 bg-gray-900/70 p-6 shadow-xl shadow-gray-950/40 backdrop-blur" %}
-{% set button_primary = "inline-flex items-center justify-center gap-2 rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-gray-950 shadow-sm transition hover:bg-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300" %}
-{% set input_class = "mt-3 w-full rounded-lg border border-gray-800 bg-gray-900/70 px-3 py-2 text-base text-gray-100 placeholder:text-gray-500 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40" %}
-
-<section class="mx-auto w-full max-w-3xl space-y-6 py-10">
-    <div class="space-y-2">
-        <h1 class="flex items-center gap-3 text-3xl font-semibold text-white">
-            <i data-feather="upload" class="h-7 w-7 text-sky-400"></i>
-            Upload a file
-        </h1>
-        <p class="text-sm text-gray-400">
-            Maximum size: <strong class="text-gray-200">{{ max_file_size_display }}</strong>
-        </p>
+<div class="flex min-h-screen flex-col bg-background text-on-background md:flex-row">
+  <nav class="hidden h-screen w-72 shrink-0 flex-col gap-2 border-r border-surface-container bg-neutral-50 px-4 py-6 md:flex">
+    <div class="mb-8 px-4">
+      <h1 class="font-title-lg text-title-lg font-black tracking-tight text-primary-container">{{ layout.brand_name }}</h1>
+      <p class="font-label-md text-label-md text-on-surface-variant">Secure Storage</p>
     </div>
-
-    {% if let Some(error) = error_message %}
-    <div class="rounded-2xl border border-rose-500/60 bg-rose-500/10 p-4 text-sm text-rose-100 shadow-lg shadow-rose-500/20" role="alert">
-        <strong class="font-semibold">Error:</strong> {{ error }}
+    <div class="flex flex-grow flex-col gap-2">
+      <a class="flex items-center gap-3 rounded-full px-4 py-3 font-label-lg text-label-lg text-on-surface-variant transition-all hover:bg-surface-container-high" href="/">
+        <span class="material-symbols-outlined">folder</span>
+        Files
+      </a>
+      <a class="flex items-center gap-3 rounded-full px-4 py-3 font-label-lg text-label-lg text-on-surface-variant transition-all hover:bg-surface-container-high" href="/paste">
+        <span class="material-symbols-outlined">content_paste</span>
+        Pastebin
+      </a>
+      <a class="flex items-center gap-3 rounded-full bg-primary-container/10 px-4 py-3 font-label-lg text-label-lg text-primary-container transition-all" href="/upload">
+        <span class="material-symbols-outlined fill">swap_horiz</span>
+        Transfers
+      </a>
+      {% if let Some(user) = layout.current_user %}
+      {% if user.is_admin %}
+      <a class="flex items-center gap-3 rounded-full px-4 py-3 font-label-lg text-label-lg text-on-surface-variant transition-all hover:bg-surface-container-high" href="/settings">
+        <span class="material-symbols-outlined">shield</span>
+        Security
+      </a>
+      {% endif %}
+      {% endif %}
     </div>
-    {% endif %}
+    <a href="/upload" class="mt-auto flex h-target-min w-full items-center justify-center gap-2 rounded-full bg-primary px-6 py-4 font-label-lg text-label-lg text-on-primary shadow-sm transition-colors hover:bg-primary/90">
+      <span class="material-symbols-outlined">add</span>
+      New Upload
+    </a>
+  </nav>
 
-    <article class="{{ card_base }} space-y-6">
-        <form method="post" action="/upload" enctype="multipart/form-data" class="space-y-6">
-            
-            <div>
-                <span class="flex items-center gap-2 text-sm font-semibold text-gray-200">
-                    <i data-feather="file" class="h-4 w-4 text-gray-400"></i>
-                    File
+  <div class="flex h-screen flex-grow flex-col overflow-hidden">
+    <header class="flex h-16 w-full shrink-0 items-center justify-between border-b border-surface-container bg-neutral-50 px-6">
+      <div class="flex items-center gap-4">
+        <a href="/" class="rounded-full p-2 text-on-surface-variant transition-colors hover:bg-surface-container-high md:hidden">
+          <span class="material-symbols-outlined">close</span>
+        </a>
+        <h2 class="font-title-lg text-title-lg font-bold tracking-tight text-primary-container md:hidden">New Upload</h2>
+        <h2 class="hidden font-title-lg text-title-lg text-on-surface md:block">Secure Transfer</h2>
+      </div>
+      <div class="flex items-center gap-2">
+        <a href="/settings" class="rounded-full p-2 text-on-surface-variant transition-colors hover:bg-surface-container-high">
+          <span class="material-symbols-outlined">settings</span>
+        </a>
+        <form method="post" action="/logout">
+          {% if let Some(csrf) = layout.csrf %}
+          <input type="hidden" name="csrf_token" value="{{ csrf.token }}" />
+          {% endif %}
+          <button class="rounded-full p-2 text-on-surface-variant transition-colors hover:bg-surface-container-high" type="submit" aria-label="Log out">
+            <span class="material-symbols-outlined">account_circle</span>
+          </button>
+        </form>
+      </div>
+    </header>
+
+    <main class="flex-grow overflow-y-auto bg-surface p-margin-mobile pb-24 md:p-margin-desktop md:pb-8">
+      <form method="post" action="/upload" enctype="multipart/form-data" class="mx-auto flex max-w-4xl flex-col gap-gutter">
+        <div class="mb-4">
+          <h1 class="mb-2 font-headline-lg text-headline-lg text-on-surface">Upload Files</h1>
+          <p class="font-body-lg text-body-lg text-on-surface-variant">Securely transfer data to your vault or share externally.</p>
+        </div>
+
+        {% if let Some(error) = error_message %}
+        <div class="rounded-xl border border-error-container bg-error-container p-4 text-sm text-on-error-container" role="alert">
+          <strong class="font-semibold">Error:</strong> {{ error }}
+        </div>
+        {% endif %}
+
+        <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div class="flex flex-col gap-6 lg:col-span-2">
+            <label id="drop-zone" for="file-upload" class="group relative flex min-h-[320px] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-primary-fixed-dim bg-surface-container-lowest p-8 text-center transition-colors hover:bg-surface-container-low">
+              <div class="absolute left-1/2 top-1/2 -z-10 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary-fixed/20 blur-3xl transition-colors group-hover:bg-primary-fixed/30"></div>
+              <div id="drop-zone-text">
+                <div class="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-surface-container transition-transform duration-300 group-hover:scale-105">
+                  <span class="material-symbols-outlined text-4xl text-primary">cloud_upload</span>
+                </div>
+                <h3 class="mb-2 font-title-lg text-title-lg text-on-surface">Drag and drop files here</h3>
+                <p class="mb-6 max-w-sm font-body-md text-body-md text-on-surface-variant">Files are stored securely with expiring share codes. Max {{ max_file_size_display }} per transfer.</p>
+                <span class="inline-flex h-target-min items-center gap-2 rounded-full bg-surface-container-high px-6 py-3 font-label-lg text-label-lg text-on-surface transition-colors hover:bg-surface-container-highest">
+                  <span class="material-symbols-outlined">folder_open</span>
+                  Browse Files
                 </span>
-                
-                <label 
-                    id="drop-zone" for="file-upload" 
-                    class="relative mt-3 flex cursor-pointer justify-center rounded-lg border border-dashed border-gray-700 bg-gray-900/70 px-6 py-10 transition hover:border-sky-400 hover:bg-gray-900/90"
-                >
-                    <div id="drop-zone-text" class="text-center">
-                        <i data-feather="upload-cloud" class="mx-auto h-12 w-12 text-gray-500"></i>
-                        <p class="mt-4 text-sm text-gray-400">
-                            <span class="font-semibold text-sky-400">Click to upload</span> or <span class="font-semibold text-sky-400">drag and drop</span>
-                        </p>
-                        <p class="text-xs text-gray-500">Use any file up to {{ max_file_size_display }}</p>
-                    </div>
+              </div>
+              <div id="file-display" class="hidden">
+                <div class="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-secondary-container">
+                  <span class="material-symbols-outlined text-4xl text-on-secondary-container">description</span>
+                </div>
+                <h3 id="file-name" class="mb-2 max-w-md break-all font-title-lg text-title-lg text-on-surface"></h3>
+                <p class="font-body-md text-body-md text-on-surface-variant">Click or drag another file to replace</p>
+              </div>
+              <input id="file-upload" type="file" name="file" required aria-required="true" class="sr-only" />
+            </label>
 
-                    <div id="file-display" class="hidden text-center">
-                        <i data-feather="file-text" class="mx-auto h-12 w-12 text-sky-400"></i>
-                        <p id="file-name" class="mt-4 text-sm font-semibold text-gray-200"></p>
-                        <p class="text-xs text-gray-500">Click or drag another file to replace</p>
-                    </div>
-                    
-                    <input
-                        id="file-upload" type="file"
-                        name="file"
-                        required
-                        aria-required="true"
-                        class="sr-only"
-                    />
-                </label>
+            <div id="selected-file-card" class="hidden rounded-xl border border-surface-container bg-surface-container-lowest p-6 shadow-sm">
+              <div class="flex items-center justify-between gap-4">
+                <div class="flex min-w-0 items-center gap-4">
+                  <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-secondary-container text-on-secondary-container">
+                    <span class="material-symbols-outlined">description</span>
+                  </div>
+                  <div class="min-w-0">
+                    <p id="selected-file-name" class="truncate font-label-lg text-label-lg text-on-surface"></p>
+                    <p id="selected-file-size" class="font-label-md text-label-md text-on-surface-variant"></p>
+                  </div>
+                </div>
+                <span class="font-label-lg text-label-lg text-primary">Ready</span>
+              </div>
+              <div class="mt-4 h-2 w-full overflow-hidden rounded-full bg-surface-container-high">
+                <div class="h-full w-full rounded-full bg-primary"></div>
+              </div>
             </div>
+          </div>
 
-            <label class="block text-sm font-semibold text-gray-200">
-                <span class="flex items-center gap-2">
-                    <i data-feather="clock" class="h-4 w-4 text-gray-400"></i>
-                    Expires in (hours)
-                </span>
-                <input
+          <div class="flex flex-col gap-6">
+            <div class="flex flex-col gap-6 rounded-xl border border-surface-container bg-surface-container-lowest p-6 shadow-sm">
+              <h3 class="border-b border-surface-container pb-4 font-title-lg text-title-lg text-on-surface">Transfer Settings</h3>
+
+              <label class="flex flex-col gap-2 font-label-lg text-label-lg text-on-surface" for="upload-expires">
+                Expiration in hours
+                <div class="relative">
+                  <span class="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">calendar_today</span>
+                  <input
+                    id="upload-expires"
                     type="number"
                     name="expires_in"
                     min="1"
@@ -72,102 +133,115 @@
                     value="{{ expires_in_value }}"
                     required
                     aria-required="true"
-                    class="{{ input_class }}"
-                />
-                <small class="mt-2 block text-sm text-gray-400">Files will be removed automatically after the selected time.</small>
-            </label>
+                    class="h-target-min w-full rounded-lg border-none bg-surface-container py-3 pl-10 pr-4 font-body-md text-body-md text-on-surface transition-colors focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+              </label>
 
-            <label class="block text-sm font-semibold text-gray-200">
+              <label class="flex flex-col gap-2 font-label-lg text-label-lg text-on-surface" for="upload-notes">
                 <span class="flex items-center gap-2">
-                    <i data-feather="edit-3" class="h-4 w-4 text-gray-400"></i>
-                    Notes <span class="text-sm font-normal text-gray-400">(optional)</span>
+                  Encrypted Memo
+                  <span class="material-symbols-outlined text-[16px] text-primary">lock</span>
                 </span>
                 <textarea
-                    name="notes"
-                    rows="3"
-                    placeholder="Internal notes for this upload"
-                    class="{{ input_class }} min-h-[120px]"
+                  id="upload-notes"
+                  name="notes"
+                  rows="3"
+                  placeholder="Add a secure note for the recipient..."
+                  class="w-full resize-none rounded-lg border-none bg-surface-container p-4 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:ring-2 focus:ring-primary"
                 ></textarea>
-            </label>
+              </label>
+
+              <div class="mt-2 flex items-center justify-between border-t border-surface-container pt-4">
+                <div class="flex flex-col">
+                  <span class="font-label-lg text-label-lg text-on-surface">Share Code</span>
+                  <span class="font-label-md text-label-md text-on-surface-variant">Generated after upload</span>
+                </div>
+                <span class="material-symbols-outlined text-primary">key</span>
+              </div>
+            </div>
 
             {% if let Some(csrf) = layout.csrf %}
             <input type="hidden" name="csrf_token" value="{{ csrf.token }}" />
             {% endif %}
 
-            <button type="submit" class="{{ button_primary }} w-full justify-center">
-                <i data-feather="upload-cloud" class="h-4 w-4"></i>
-                Start upload
+            <button class="flex h-target-min w-full items-center justify-center gap-2 rounded-full bg-primary px-6 py-4 font-label-lg text-label-lg text-on-primary shadow-md transition-all hover:bg-primary/90 active:scale-[0.98]" type="submit">
+              <span class="material-symbols-outlined">send</span>
+              Execute Transfer
             </button>
-        </form>
-    </article>
-</section>
+          </div>
+        </div>
+      </form>
+    </main>
+  </div>
+</div>
+{% endblock %}
 
+{% block body_scripts %}
 <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const dropZone = document.getElementById('drop-zone');
-        const fileInput = document.getElementById('file-upload');
-        const dropZoneText = document.getElementById('drop-zone-text');
-        const fileDisplay = document.getElementById('file-display');
-        const fileNameDisplay = document.getElementById('file-name');
-        
-        // CSS classes for styling the drop zone when a file is dragged over
-        const activeDragClasses = ['border-sky-400', 'bg-gray-900/90'];
-        const inactiveDragClasses = ['border-gray-700'];
+  document.addEventListener("DOMContentLoaded", () => {
+    const dropZone = document.getElementById("drop-zone");
+    const fileInput = document.getElementById("file-upload");
+    const dropZoneText = document.getElementById("drop-zone-text");
+    const fileDisplay = document.getElementById("file-display");
+    const fileNameDisplay = document.getElementById("file-name");
+    const selectedCard = document.getElementById("selected-file-card");
+    const selectedName = document.getElementById("selected-file-name");
+    const selectedSize = document.getElementById("selected-file-size");
 
-        // Prevent default browser behavior for drag events
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-            });
-        });
+    if (!dropZone || !fileInput) {
+      return;
+    }
 
-        // Highlight drop zone on drag enter/over
-        ['dragenter', 'dragover'].forEach(eventName => {
-            dropZone.addEventListener(eventName, () => {
-                dropZone.classList.remove(...inactiveDragClasses);
-                dropZone.classList.add(...activeDragClasses);
-            });
-        });
+    const formatBytes = (bytes) => {
+      if (!Number.isFinite(bytes) || bytes <= 0) {
+        return "0 B";
+      }
+      const units = ["B", "KB", "MB", "GB", "TB"];
+      const exponent = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+      const value = bytes / Math.pow(1024, exponent);
+      return `${value.toFixed(value >= 10 || exponent === 0 ? 0 : 1)} ${units[exponent]}`;
+    };
 
-        // Remove highlight on drag leave or drop
-        ['dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, () => {
-                dropZone.classList.remove(...activeDragClasses);
-                dropZone.classList.add(...inactiveDragClasses);
-            });
-        });
-
-        // Handle file drop
-        dropZone.addEventListener('drop', (e) => {
-            // Get the dropped files from the event
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                // Assign the files to the hidden file input
-                fileInput.files = files; 
-                // Trigger the 'change' event on the file input
-                fileInput.dispatchEvent(new Event('change', { 'bubbles': true }));
-            }
-        });
-        
-        // Update UI when file is selected (from either click or drop)
-        fileInput.addEventListener('change', () => {
-            if (fileInput.files.length > 0) {
-                const fileName = fileInput.files[0].name;
-                
-                // Update the file name display
-                fileNameDisplay.textContent = fileName;
-                
-                // Show file info, hide default "drag" text
-                dropZoneText.classList.add('hidden');
-                fileDisplay.classList.remove('hidden');
-                
-                // If you're using the Feather Icons library, this re-renders the icon
-                if (typeof feather !== 'undefined') {
-                    feather.replace();
-                }
-            }
-        });
+    ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
+      dropZone.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+      });
     });
+
+    ["dragenter", "dragover"].forEach((eventName) => {
+      dropZone.addEventListener(eventName, () => {
+        dropZone.classList.add("bg-surface-container-low", "border-primary");
+      });
+    });
+
+    ["dragleave", "drop"].forEach((eventName) => {
+      dropZone.addEventListener(eventName, () => {
+        dropZone.classList.remove("bg-surface-container-low", "border-primary");
+      });
+    });
+
+    dropZone.addEventListener("drop", (event) => {
+      const files = event.dataTransfer.files;
+      if (files.length > 0) {
+        fileInput.files = files;
+        fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    });
+
+    fileInput.addEventListener("change", () => {
+      if (fileInput.files.length === 0) {
+        return;
+      }
+      const file = fileInput.files[0];
+      fileNameDisplay.textContent = file.name;
+      selectedName.textContent = file.name;
+      selectedSize.textContent = formatBytes(file.size);
+      dropZoneText.classList.add("hidden");
+      fileDisplay.classList.remove("hidden");
+      selectedCard.classList.remove("hidden");
+    });
+  });
 </script>
 {% endblock %}
