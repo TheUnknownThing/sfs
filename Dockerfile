@@ -8,6 +8,8 @@ FROM rust:1.88-alpine3.20 AS builder
 # Allow incremental builds to reuse dependencies
 RUN apk add --no-cache \
         build-base \
+        nodejs \
+        npm \
         openssl-dev \
         sqlite-dev \
         sqlite \
@@ -28,6 +30,9 @@ RUN mkdir -p src \
 
 # Copy the remainder of the source code
 COPY . .
+
+# Compile static assets from local packages so CDN CSS and fonts stay out of runtime pages.
+RUN npm ci && npm run build:static
 
 # Create a temporary database for the build
 RUN mkdir -p /tmp/sqlx-tmp && \
@@ -68,6 +73,7 @@ ENV RUST_LOG=info \
 # Copy the release binary from the builder stage
 ARG TARGETARCH
 COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/simple_file_server /app/simple_file_server
+COPY --from=builder /app/static /app/static
 
 # Copy entrypoint (added separately) to drop privileges after ensuring writable volumes
 COPY docker/entrypoint.sh /entrypoint.sh

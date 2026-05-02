@@ -6,7 +6,7 @@ Welcome! This repository contains a Rust-based file sharing and paste server wit
 
 ## What is this?
 - Upload files and create text pastes (login required), share a short code, and anyone can fetch a temporary direct link to download.
-- Built with Axum, SQLx (SQLite), Askama, Pico.css, and secure defaults.
+- Built with Axum, SQLx (SQLite), Askama, locally compiled Tailwind CSS, and secure defaults.
 - Features include user management, registration control, paste syntax highlighting, file preview, and comprehensive rate limiting.
 
 ## Quick Start (Local Development)
@@ -45,7 +45,13 @@ Welcome! This repository contains a Rust-based file sharing and paste server wit
 
    **Warning** If you are self-deploying, the url in the `env.example` points to `/data/app.db` instead of the relative path `data/app.db`! Make sure to adjust this accordingly.
 
-5.  **Run the application:**
+5. **Build local static assets:**
+    ```bash
+    npm install
+    npm run build:static
+    ```
+
+6.  **Run the application:**
     ```bash
     cargo run
     ```
@@ -79,7 +85,7 @@ Welcome! This repository contains a Rust-based file sharing and paste server wit
     ```bash
     cargo build --release
     ```
-    The binary will be located at `target/release/simple_file_server`.
+    The binary will be located at `target/release/simple_file_server`. Run `npm run build:static` before packaging and deploy the generated `static/` directory beside the binary.
 
 2.  **Prepare the environment:**
     On your server, create a directory for the application. Copy the `simple_file_server` binary to this directory.

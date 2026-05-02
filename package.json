@@ -1,0 +1,16 @@
+{
+  "name": "simple-file-server-assets",
+  "private": true,
+  "scripts": {
+    "build:static": "node scripts/build_static.mjs && tailwindcss -c tailwind.config.js -i assets/css/app.input.css -o static/css/app.css --minify"
+  },
+  "devDependencies": {
+    "@fontsource/fira-code": "5.2.7",
+    "@fontsource/manrope": "5.2.8",
+    "@tailwindcss/container-queries": "0.1.1",
+    "@tailwindcss/forms": "0.5.11",
+    "@tailwindcss/typography": "0.5.19",
+    "htmx.org": "1.9.12",
+    "tailwindcss": "3.4.19"
+  }
+}

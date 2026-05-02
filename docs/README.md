@@ -7,7 +7,7 @@ A pretty, team-friendly upload server with file-code sharing and paste functiona
 - Short file codes for sharing (e.g., `5G2X-9KQD`)
 - Temporary signed direct download links with one click "Copy link"
 - Text paste support with syntax highlighting for multiple languages
-- Minimal, clean web UI (Pico.css) with server-rendered templates (Askama) and light htmx sprinkles
+- Minimal, clean web UI with server-rendered templates (Askama), locally compiled Tailwind CSS, local fonts, and light htmx sprinkles
 - User management with registration (admin-controlled) and admin panel
 - Simple accounts (username + password), secure password hashing (Argon2id)
 - Settings: default file expiration, max file size, direct-link TTL, registration toggle
@@ -23,7 +23,7 @@ A pretty, team-friendly upload server with file-code sharing and paste functiona
 - Sessions: tower-sessions + tower-sessions-sqlx (SQLite-backed)
 - Passwords: argon2 (Argon2id)
 - IDs: ULID for file IDs, nanoid for short codes
-- UI: Pico.css (CDN) + htmx (CDN) + feather icons (CDN)
+- UI: locally compiled Tailwind CSS + local htmx + subsetted local fonts/icons served from `static/`
 - Config: config crate + dotenvy
 - Logging: tracing + tracing-subscriber
 - Rate limit: tower-governor

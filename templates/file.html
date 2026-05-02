@@ -57,17 +57,12 @@
               <span class="font-label-md text-label-md uppercase tracking-wider">Preview</span>
             </div>
             <div class="flex items-center gap-2">
-              <button type="button" id="toggle-preview-mode" class="flex h-9 items-center gap-2 rounded-full px-3 font-label-md text-label-md text-on-surface-variant transition-colors hover:bg-surface-variant" title="Toggle between Monaco editor and plain text preview">
-                <span class="material-symbols-outlined text-[20px]">code</span>
-                <span id="preview-mode-text">Editor</span>
-              </button>
               <button type="button" class="flex h-9 w-9 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-variant" data-copy data-copy-target="#file-preview-content" aria-label="Copy preview">
                 <span class="material-symbols-outlined text-[20px]">content_copy</span>
               </button>
             </div>
           </div>
           <div class="relative flex-1 overflow-hidden bg-[#1E1E1E]">
-            <div id="monaco-editor-container" class="absolute inset-0 hidden"></div>
             <pre id="file-preview-content" class="preview-scroll absolute inset-0 overflow-auto p-6 font-mono text-[14px] leading-relaxed text-[#D4D4D4]">{{ preview_content }}</pre>
           </div>
         </section>
@@ -284,111 +279,6 @@
     });
   }
 
-  let monacoEditor = null;
-  let isMonacoMode = false;
-  let fileContent = "";
-  let monacoLoaded = false;
-
-  async function loadMonacoEditor() {
-    if (monacoLoaded) return;
-
-    return new Promise((resolve) => {
-      require.config({
-        paths: { vs: "https://unpkg.com/monaco-editor@0.52.2/min/vs" },
-      });
-      require(["vs/editor/editor.main"], function () {
-        monacoLoaded = true;
-        resolve();
-      });
-    });
-  }
-
-  async function initializeMonacoEditor(content, filename) {
-    if (monacoEditor) {
-      monacoEditor.dispose();
-    }
-
-    await loadMonacoEditor();
-
-    const container = document.getElementById("monaco-editor-container");
-    if (!container) {
-      return;
-    }
-
-    if (monaco.languages && monaco.languages.typescript) {
-      monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
-        noSemanticValidation: true,
-        noSyntaxValidation: true,
-      });
-      monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
-        noSemanticValidation: true,
-        noSyntaxValidation: true,
-      });
-    }
-
-    const modelUri = monaco.Uri.file(filename);
-    let model = monaco.editor.getModel(modelUri);
-    if (model) {
-      model.setValue(content);
-    } else {
-      model = monaco.editor.createModel(content, undefined, modelUri);
-    }
-
-    monacoEditor = monaco.editor.create(container, {
-      model: model,
-      theme: "vs-dark",
-      readOnly: true,
-      minimap: { enabled: true },
-      scrollBeyondLastLine: false,
-      fontSize: 14,
-      lineNumbers: "on",
-      renderWhitespace: "selection",
-      wordWrap: "on",
-      automaticLayout: true,
-    });
-  }
-
-  async function togglePreviewMode() {
-    const monacoContainer = document.getElementById("monaco-editor-container");
-    const plainTextContainer = document.getElementById("file-preview-content");
-    const modeText = document.getElementById("preview-mode-text");
-
-    if (!monacoContainer || !plainTextContainer) {
-      return;
-    }
-
-    if (!isMonacoMode) {
-      if (!monacoEditor) {
-        const toggleButton = document.getElementById("toggle-preview-mode");
-        if (toggleButton) {
-          toggleButton.innerHTML = '<span class="material-symbols-outlined text-[20px]">progress_activity</span><span id="preview-mode-text">Loading</span>';
-        }
-        await initializeMonacoEditor(fileContent, "{{ original_name }}");
-      }
-
-      monacoContainer.classList.remove("hidden");
-      plainTextContainer.classList.add("hidden");
-      const activeModeText = document.getElementById("preview-mode-text");
-      if (activeModeText) {
-        activeModeText.textContent = "Monaco";
-      }
-      isMonacoMode = true;
-
-      setTimeout(() => {
-        if (monacoEditor) {
-          monacoEditor.layout();
-        }
-      }, 100);
-    } else {
-      monacoContainer.classList.add("hidden");
-      plainTextContainer.classList.remove("hidden");
-      if (modeText) {
-        modeText.textContent = "Editor";
-      }
-      isMonacoMode = false;
-    }
-  }
-
   async function loadPreview(code) {
     "use strict";
 
@@ -410,13 +300,7 @@
         throw new Error(`Failed to fetch file content (status ${response.status})`);
       }
 
-      fileContent = await response.text();
-      previewContainer.textContent = fileContent;
-
-      const toggleButton = document.getElementById("toggle-preview-mode");
-      if (toggleButton) {
-        toggleButton.addEventListener("click", togglePreviewMode);
-      }
+      previewContainer.textContent = await response.text();
     } catch (error) {
       console.error("Preview loading error:", error);
       previewContainer.textContent = "Preview unavailable.";

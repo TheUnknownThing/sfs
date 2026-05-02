@@ -3,6 +3,7 @@ use axum::routing::{get, post};
 use axum::Router;
 use tower::ServiceBuilder;
 use tower_http::limit::RequestBodyLimitLayer;
+use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
 use tower_sessions::SessionManagerLayer;
 use tower_sessions_sqlx_store::SqliteStore;
@@ -72,6 +73,7 @@ pub fn build_router(state: AppState, session_layer: SessionManagerLayer<SqliteSt
             "/paste",
             get(handlers::paste::paste_form_handler).post(handlers::paste::paste_submit_handler),
         )
+        .nest_service("/static", ServeDir::new("static"))
         .merge(upload_routes)
         .layer(
             ServiceBuilder::new()
