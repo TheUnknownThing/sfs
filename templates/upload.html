@@ -1,17 +1,17 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="flex min-h-screen flex-col bg-background text-on-background md:flex-row">
+<div class="flex min-h-screen flex-col bg-background text-on-background lg:flex-row">
   {% let active_nav = "transfers" %}
   {% include "sidebar.html" %}
 
   <div class="flex h-screen flex-grow flex-col overflow-hidden">
-    <header class="flex h-16 w-full shrink-0 items-center justify-between gap-3 border-b border-surface-container bg-surface px-4 sm:px-6 md:hidden">
+    <header class="flex h-16 w-full shrink-0 items-center justify-between gap-3 border-b border-surface-container bg-surface px-4 sm:px-6 lg:hidden">
       <div class="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
-        <a href="/" class="flex h-target-min w-target-min items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-high md:hidden">
+        <a href="/" class="flex h-target-min w-target-min items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-high lg:hidden">
           <span class="material-symbols-outlined">close</span>
         </a>
-        <h2 class="truncate font-title-lg text-title-lg font-bold tracking-tight text-primary-container md:hidden">New Upload</h2>
+        <h2 class="truncate font-title-lg text-title-lg font-bold tracking-tight text-primary-container lg:hidden">New Upload</h2>
         <h2 class="hidden font-title-lg text-title-lg text-on-surface md:block">Secure Transfer</h2>
       </div>
       <div class="flex shrink-0 items-center gap-2">
@@ -30,8 +30,8 @@
       </div>
     </header>
 
-    <main class="flex-grow overflow-y-auto bg-surface p-margin-mobile pb-24 md:p-margin-desktop md:pb-8">
-      <form method="post" action="/upload" enctype="multipart/form-data" class="mx-auto flex max-w-4xl flex-col gap-gutter">
+    <main class="flex flex-grow flex-col overflow-y-auto bg-surface p-margin-mobile pb-24 md:p-margin-desktop md:pb-8">
+      <form method="post" action="/upload" enctype="multipart/form-data" class="mx-auto my-auto flex max-w-3xl flex-col gap-gutter md:max-w-4xl">
         <div class="mb-4">
           <h1 class="mb-2 font-headline-lg text-headline-lg text-on-surface">Upload Files</h1>
           <p class="font-body-lg text-body-lg text-on-surface-variant">Securely transfer data to your vault or share externally.</p>

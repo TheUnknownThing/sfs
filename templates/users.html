@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="flex h-screen w-full overflow-hidden bg-background text-on-background">
+<div class="flex h-screen w-full flex-col overflow-hidden bg-background text-on-background lg:flex-row">
   {% let active_nav = "users" %}
   {% include "sidebar.html" %}
 
   <main class="relative flex h-full flex-1 flex-col overflow-hidden bg-background">
-    <header class="relative z-10 flex h-16 w-full items-center justify-between gap-3 bg-surface px-4 sm:px-6 md:hidden">
-      <div class="flex min-w-0 flex-1 items-center gap-2 md:hidden">
+    <header class="relative z-10 flex h-16 w-full items-center justify-between gap-3 bg-surface px-4 sm:px-6 lg:hidden">
+      <div class="flex min-w-0 flex-1 items-center gap-2 lg:hidden">
         <span class="material-symbols-outlined text-primary">menu</span>
         <span class="truncate text-xl font-bold tracking-tight text-primary">{{ layout.brand_name }}</span>
       </div>
@@ -31,27 +31,28 @@
       </div>
     </header>
 
-    <div class="flex-1 overflow-y-auto p-margin-mobile md:p-margin-desktop">
-      <div class="mb-8">
-        <div>
-          <h1 class="mb-1 font-headline-lg text-headline-lg text-on-background">User Management</h1>
-          <p class="font-body-lg text-body-lg text-on-surface-variant">Review and manage access levels across your organization.</p>
+    <div class="flex flex-1 flex-col overflow-y-auto p-margin-mobile md:p-margin-desktop">
+      <div class="my-auto flex flex-col">
+        <div class="mb-8">
+          <div>
+            <h1 class="mb-1 font-headline-lg text-headline-lg text-on-background">User Management</h1>
+            <p class="font-body-lg text-body-lg text-on-surface-variant">Review and manage access levels across your organization.</p>
+          </div>
         </div>
-      </div>
 
-      {% if let Some(message) = success_message %}
-      <div class="mb-6 rounded-xl border border-tertiary-container/20 bg-tertiary-container/10 p-4 text-on-surface" role="status">
-        <strong class="font-semibold">Success!</strong> {{ message }}
-      </div>
-      {% endif %}
+        {% if let Some(message) = success_message %}
+        <div class="mb-6 rounded-xl border border-tertiary-container/20 bg-tertiary-container/10 p-4 text-on-surface" role="status">
+          <strong class="font-semibold">Success!</strong> {{ message }}
+        </div>
+        {% endif %}
 
-      {% if let Some(message) = general_error %}
-      <div class="mb-6 rounded-xl border border-error-container bg-error-container p-4 text-on-error-container" role="alert">
-        <strong class="font-semibold">Error:</strong> {{ message }}
-      </div>
-      {% endif %}
+        {% if let Some(message) = general_error %}
+        <div class="mb-6 rounded-xl border border-error-container bg-error-container p-4 text-on-error-container" role="alert">
+          <strong class="font-semibold">Error:</strong> {{ message }}
+        </div>
+        {% endif %}
 
-      <section id="add-user" class="mb-8 rounded-xl border border-surface-variant bg-surface-container-lowest p-6 shadow-sm">
+        <section id="add-user" class="mb-8 rounded-xl border border-surface-variant bg-surface-container-lowest p-6 shadow-sm">
         <h2 class="mb-6 flex items-center gap-2 font-title-lg text-title-lg text-on-surface">
           <span class="material-symbols-outlined text-primary">person_add</span>
           Add User
@@ -98,9 +99,9 @@
             </button>
           </div>
         </form>
-      </section>
+        </section>
 
-      <section class="flex w-full flex-col gap-2">
+        <section class="flex w-full flex-col gap-2">
         <div class="mb-2 hidden grid-cols-12 gap-4 border-b border-surface-variant px-6 py-3 font-label-lg text-label-lg text-on-surface-variant md:grid">
           <div class="col-span-4">User Details</div>
           <div class="col-span-2">Role</div>
@@ -177,7 +178,8 @@
         </div>
         {% endfor %}
         {% endif %}
-      </section>
+        </section>
+      </div>
     </div>
   </main>
 </div>

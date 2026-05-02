@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="flex min-h-screen flex-col bg-background text-on-background md:flex-row">
+<div class="flex min-h-screen flex-col bg-background text-on-background lg:flex-row">
   {% let active_nav = "files" %}
   {% include "sidebar.html" %}
 
   <main class="relative flex min-w-0 flex-1 flex-col">
-    <header class="sticky top-0 z-50 flex h-16 w-full items-center justify-between gap-3 border-b border-surface-variant bg-surface px-4 sm:px-6 md:hidden">
+    <header class="sticky top-0 z-50 flex h-16 w-full items-center justify-between gap-3 border-b border-surface-variant bg-surface px-4 sm:px-6 lg:hidden">
       <div class="min-w-0 flex-1">
         <div class="truncate text-xl font-bold tracking-tight text-primary">{{ layout.brand_name }}</div>
       </div>
@@ -34,8 +34,8 @@
       </div>
     </header>
 
-    <div class="flex-1 overflow-y-auto px-margin-mobile py-8 pb-28 md:px-margin-desktop md:pb-28">
-      <div class="mx-auto flex max-w-5xl flex-col gap-8 md:gap-12">
+    <div class="flex flex-1 flex-col justify-center overflow-y-auto px-margin-mobile py-8 pb-28 md:px-margin-desktop md:pb-28">
+      <div class="mx-auto my-auto flex max-w-4xl flex-col gap-8 md:max-w-5xl md:gap-12">
         {% if let Some(message) = flash_message %}
         <article class="rounded-xl border border-tertiary-container/20 bg-tertiary-container/10 p-4 text-on-surface" role="status">
           <p class="flex items-center gap-3 font-label-lg text-label-lg">
@@ -129,7 +129,7 @@
     </a>
     {% endif %}
 
-    <nav class="fixed bottom-0 z-50 flex h-20 w-full items-center justify-around border-t border-surface-variant bg-surface-container px-2 md:hidden">
+    <nav class="fixed bottom-0 z-50 flex h-20 w-full items-center justify-around border-t border-surface-variant bg-surface-container px-2 lg:hidden">
       <a class="flex h-full w-16 flex-col items-center justify-center gap-1 text-on-surface" href="/">
         <div class="flex h-8 w-16 items-center justify-center rounded-full bg-secondary-container">
           <span class="material-symbols-outlined fill">folder</span>
