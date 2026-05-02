@@ -2,7 +2,7 @@ use std::net::SocketAddr;
 
 use axum::{
     extract::{ConnectInfo, Path as AxumPath, State},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
     Form,
 };
@@ -135,6 +135,7 @@ pub async fn file_direct_link_handler(
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     session: Session,
     AxumPath(raw_code): AxumPath<String>,
+    headers: HeaderMap,
     Form(form): Form<GenerateLinkForm>,
 ) -> Response {
     let csrf_valid = match csrf::validate_csrf_token(&session, &form.csrf_token).await {
@@ -269,7 +270,7 @@ pub async fn file_direct_link_handler(
         Err(_) => ttl_minutes,
     };
 
-    let direct_url = format!("/d/{token}");
+    let direct_url = build_direct_download_url(&headers, &token);
     let expires_display = format_datetime_utc(expires_at);
     let input_id = format!("direct-link-url-{}", Ulid::new());
 
@@ -287,6 +288,38 @@ pub async fn file_direct_link_handler(
         .with_input_id(input_id);
 
     HtmlTemplate::new(template).into_response()
+}
+
+fn build_direct_download_url(headers: &HeaderMap, token: &str) -> String {
+    let path = format!("/d/{token}");
+    let Some(host) = forwarded_host(headers).or_else(|| header_value(headers, "host")) else {
+        return path;
+    };
+
+    let scheme = forwarded_proto(headers).unwrap_or("http");
+    format!("{scheme}://{host}{path}")
+}
+
+fn forwarded_proto(headers: &HeaderMap) -> Option<&str> {
+    header_value(headers, "x-forwarded-proto")
+        .and_then(first_forwarded_value)
+        .filter(|value| matches!(*value, "http" | "https"))
+}
+
+fn forwarded_host(headers: &HeaderMap) -> Option<&str> {
+    header_value(headers, "x-forwarded-host").and_then(first_forwarded_value)
+}
+
+fn first_forwarded_value(value: &str) -> Option<&str> {
+    value.split(',').map(str::trim).find(|part| !part.is_empty())
+}
+
+fn header_value<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
+    headers
+        .get(name)
+        .and_then(|value| value.to_str().ok())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
 }
 
 /// POST /f/:code/delete — remove a file record and associated blob.

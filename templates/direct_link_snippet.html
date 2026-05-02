@@ -4,12 +4,12 @@
   role="region"
   aria-live="polite"
 >
-  <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-    <div class="flex items-center gap-3">
+  <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.9fr)] xl:items-center">
+    <div class="flex min-w-0 items-center gap-3">
       <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-tertiary-container text-on-tertiary-container">
         <span class="material-symbols-outlined">link</span>
       </div>
-      <div>
+      <div class="min-w-0">
         <p class="font-label-lg text-label-lg text-on-surface">Link Generated Successfully</p>
         <p class="font-body-md text-body-md text-on-surface-variant">
           Expires in <strong>{{ ttl_minutes }} minute{% if ttl_minutes != 1 %}s{% endif %}</strong> ({{ expires_display }}).

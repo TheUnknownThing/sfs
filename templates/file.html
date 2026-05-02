@@ -3,8 +3,8 @@
 {% block content %}
 <div class="flex min-h-screen bg-background text-on-background">
   <div class="flex min-h-screen flex-1 flex-col">
-    <header class="flex h-20 w-full shrink-0 items-center justify-between border-b border-surface-variant bg-surface px-4 md:px-6">
-      <div class="flex min-w-0 items-center gap-4">
+    <header class="flex min-h-20 w-full shrink-0 items-center justify-between gap-2 border-b border-surface-variant bg-surface px-3 py-3 sm:gap-4 sm:px-4 md:px-6">
+      <div class="flex min-w-0 flex-1 items-center gap-2 sm:gap-4">
         <a href="/" class="group flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-high">
           <span class="material-symbols-outlined transition-transform group-hover:-translate-x-1">arrow_back</span>
         </a>
@@ -13,11 +13,22 @@
           <p class="font-body-md text-body-md text-on-surface-variant">Shared in {{ layout.brand_name }}</p>
         </div>
       </div>
-      <div class="hidden items-center gap-3 sm:flex">
-        <button type="button" class="flex h-12 items-center gap-2 rounded-full bg-secondary-container px-6 font-label-lg text-label-lg text-on-secondary-container transition-colors hover:bg-secondary-container/80" onclick="handleDownload(event, '{{ code }}')">
+      <div class="flex shrink-0 items-center gap-2">
+        <button type="button" class="flex h-12 w-12 items-center justify-center rounded-full bg-secondary-container font-label-lg text-label-lg text-on-secondary-container transition-colors hover:bg-secondary-container/80 sm:w-auto sm:gap-2 sm:px-6" onclick="handleDownload(event, '{{ code }}')" aria-label="Download file">
           <span class="material-symbols-outlined fill">download</span>
-          Download File
+          <span class="hidden sm:inline">Download File</span>
         </button>
+        {% if can_delete %}
+        <form method="post" action="/f/{{ code }}/delete" data-delete-form class="shrink-0">
+          {% if let Some(csrf) = layout.csrf %}
+          <input type="hidden" name="csrf_token" value="{{ csrf.token }}" />
+          {% endif %}
+          <button type="submit" class="flex h-12 w-12 items-center justify-center rounded-full border border-error-container bg-error-container font-label-lg text-label-lg text-on-error-container transition-colors hover:brightness-95 sm:w-auto sm:gap-2 sm:px-6" data-delete-button aria-label="Delete file">
+            <span class="material-symbols-outlined text-[20px]">delete</span>
+            <span class="hidden sm:inline">Delete File</span>
+          </button>
+        </form>
+        {% endif %}
       </div>
     </header>
 
@@ -48,6 +59,33 @@
             </div>
           </div>
         </div>
+
+        <section class="flex flex-col gap-5 rounded-2xl bg-surface-container p-6" data-share-panel>
+          <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+            <div class="min-w-0">
+              <h2 class="font-title-lg text-title-lg text-on-surface">Share File</h2>
+              <p class="mt-1 max-w-xl font-body-md text-body-md text-on-surface-variant">Generate a secure, expiring direct download link.</p>
+            </div>
+            <div class="w-full xl:w-auto xl:min-w-[220px]">
+              <form method="post" action="/f/{{ code }}/link" hx-post="/f/{{ code }}/link" hx-target="#direct-link-output" hx-swap="outerHTML" hx-disabled-elt="button">
+                {% if let Some(csrf) = layout.csrf %}
+                <input type="hidden" name="csrf_token" value="{{ csrf.token }}" />
+                {% endif %}
+                <button type="submit" class="flex h-12 w-full items-center justify-center gap-2 rounded-full border border-outline-variant bg-surface px-6 font-label-lg text-label-lg text-primary transition-colors hover:bg-surface-container-high">
+                  <span class="material-symbols-outlined text-[20px]">share</span>
+                  Generate Link
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <div id="direct-link-output" class="rounded-xl border border-surface-variant bg-surface-container-low p-4" role="region" aria-live="polite">
+            <p class="flex items-center justify-center gap-2 font-body-md text-body-md text-on-surface-variant">
+              <span class="material-symbols-outlined">info</span>
+              Generate a direct link to download this file directly.
+            </p>
+          </div>
+        </section>
 
         {% if can_preview %}
         <section class="flex min-h-[400px] flex-1 flex-col overflow-hidden rounded-2xl border border-surface-variant bg-surface-container-lowest">
@@ -82,44 +120,6 @@
       </div>
 
       <aside class="flex w-full shrink-0 flex-col gap-6 lg:w-[360px]">
-        <div class="flex flex-col gap-4 rounded-2xl bg-surface-container p-6">
-          <h2 class="font-title-lg text-title-lg text-on-surface">Share File</h2>
-          <p class="font-body-md text-body-md text-on-surface-variant">Generate a secure, expiring link to share this file.</p>
-          <div class="mt-2 space-y-3">
-            <button type="button" class="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-primary font-label-lg text-label-lg text-on-primary shadow-sm transition-colors hover:bg-primary/90" onclick="handleDownload(event, '{{ code }}')">
-              <span class="material-symbols-outlined text-[20px]">download</span>
-              Download File
-            </button>
-            <form method="post" action="/f/{{ code }}/link" hx-post="/f/{{ code }}/link" hx-target="#direct-link-output" hx-swap="outerHTML" hx-disabled-elt="button">
-              {% if let Some(csrf) = layout.csrf %}
-              <input type="hidden" name="csrf_token" value="{{ csrf.token }}" />
-              {% endif %}
-              <button type="submit" class="flex h-12 w-full items-center justify-center gap-2 rounded-full border border-outline-variant bg-surface font-label-lg text-label-lg text-primary transition-colors hover:bg-surface-container-high">
-                <span class="material-symbols-outlined text-[20px]">share</span>
-                Generate Link
-              </button>
-            </form>
-            {% if can_delete %}
-            <form method="post" action="/f/{{ code }}/delete" data-delete-form>
-              {% if let Some(csrf) = layout.csrf %}
-              <input type="hidden" name="csrf_token" value="{{ csrf.token }}" />
-              {% endif %}
-              <button type="submit" class="flex h-12 w-full items-center justify-center gap-2 rounded-full border border-error-container bg-error-container font-label-lg text-label-lg text-on-error-container transition-colors hover:brightness-95" data-delete-button>
-                <span class="material-symbols-outlined text-[20px]">delete</span>
-                Delete File
-              </button>
-            </form>
-            {% endif %}
-          </div>
-        </div>
-
-        <div id="direct-link-output" class="rounded-xl border border-surface-variant bg-surface-container-low p-4" role="region" aria-live="polite">
-          <p class="flex items-center justify-center gap-2 font-body-md text-body-md text-on-surface-variant">
-            <span class="material-symbols-outlined">info</span>
-            Generate a direct link to download this file directly.
-          </p>
-        </div>
-
         <div class="rounded-2xl border border-surface-variant bg-surface-container-low p-6">
           <h3 class="mb-6 flex items-center gap-2 font-label-lg text-label-lg text-on-surface">
             <span class="material-symbols-outlined text-[20px] text-primary">info</span>
@@ -231,7 +231,7 @@
       button.disabled = true;
       button.innerHTML = '<span class="material-symbols-outlined">progress_activity</span> Generating...';
 
-      const siblingForm = button.closest("aside")?.querySelector("form");
+      const siblingForm = document.querySelector("[data-share-panel] form");
       const csrfToken = resolveCsrfToken(siblingForm);
       const { snippet, directUrl } = await requestDirectLink(code, csrfToken);
 
