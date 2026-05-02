@@ -2,85 +2,33 @@
 
 {% block content %}
 <div class="flex min-h-screen flex-col bg-background text-on-background md:flex-row">
-  <aside class="hidden w-72 shrink-0 flex-col gap-2 border-r border-neutral-200 bg-neutral-50 px-4 py-6 md:flex">
-    <div class="mb-8 px-4">
-      <h2 class="text-lg font-black tracking-tight text-[#4A675F]">{{ layout.brand_name }}</h2>
-      <p class="font-label-md text-label-md text-neutral-600">Secure Storage</p>
-    </div>
-    {% if layout.current_user.is_some() %}
-    <a href="/upload" class="mb-6 flex h-target-min w-full items-center justify-center gap-2 rounded-full bg-primary font-label-lg text-label-lg text-on-primary shadow-sm transition-opacity hover:opacity-90">
-      <span class="material-symbols-outlined">add</span>
-      New Upload
-    </a>
-    {% else %}
-    <a href="/login" class="mb-6 flex h-target-min w-full items-center justify-center gap-2 rounded-full bg-primary font-label-lg text-label-lg text-on-primary shadow-sm transition-opacity hover:opacity-90">
-      <span class="material-symbols-outlined">login</span>
-      Sign In
-    </a>
-    {% endif %}
-    <nav class="flex flex-1 flex-col gap-2">
-      <a class="flex items-center gap-3 rounded-full bg-[#4A675F]/10 px-4 py-3 font-label-lg text-label-lg text-[#4A675F] transition-all" href="/">
-        <span class="material-symbols-outlined fill">folder</span>
-        Files
-      </a>
-      {% if layout.current_user.is_some() %}
-      <a class="flex items-center gap-3 rounded-full px-4 py-3 font-label-lg text-label-lg text-neutral-600 transition-all hover:bg-neutral-200/50" href="/paste">
-        <span class="material-symbols-outlined">content_paste</span>
-        Pastebin
-      </a>
-      <a class="flex items-center gap-3 rounded-full px-4 py-3 font-label-lg text-label-lg text-neutral-600 transition-all hover:bg-neutral-200/50" href="/upload">
-        <span class="material-symbols-outlined">swap_horiz</span>
-        Transfers
-      </a>
-      {% if let Some(user) = layout.current_user %}
-      {% if user.is_admin %}
-      <a class="flex items-center gap-3 rounded-full px-4 py-3 font-label-lg text-label-lg text-neutral-600 transition-all hover:bg-neutral-200/50" href="/settings">
-        <span class="material-symbols-outlined">shield</span>
-        Security
-      </a>
-      {% endif %}
-      {% endif %}
-      {% endif %}
-    </nav>
-  </aside>
+  {% let active_nav = "files" %}
+  {% include "sidebar.html" %}
 
   <main class="relative flex min-w-0 flex-1 flex-col">
-    <header class="sticky top-0 z-50 flex h-16 w-full items-center justify-between border-b border-neutral-200 bg-neutral-50 px-6">
-      <div class="flex items-center gap-8">
-        <div class="text-xl font-bold tracking-tight text-[#4A675F] md:hidden">{{ layout.brand_name }}</div>
-        <div class="hidden text-xl font-bold tracking-tight text-[#4A675F] md:block">{{ layout.brand_name }}</div>
-        <nav class="hidden h-full items-center gap-1 md:flex">
-          <a class="flex h-16 items-center border-b-2 border-[#4A675F] px-4 font-label-lg text-label-lg font-bold text-[#4A675F] transition-colors hover:bg-neutral-100" href="/">Files</a>
-          {% if layout.current_user.is_some() %}
-          <a class="flex h-16 items-center px-4 font-label-lg text-label-lg text-neutral-600 transition-colors hover:bg-neutral-100" href="/paste">Pastebin</a>
-          <a class="flex h-16 items-center px-4 font-label-lg text-label-lg text-neutral-600 transition-colors hover:bg-neutral-100" href="/upload">Transfers</a>
-          {% if let Some(user) = layout.current_user %}
-          {% if user.is_admin %}
-          <a class="flex h-16 items-center px-4 font-label-lg text-label-lg text-neutral-600 transition-colors hover:bg-neutral-100" href="/settings">Security</a>
-          {% endif %}
-          {% endif %}
-          {% endif %}
-        </nav>
+    <header class="sticky top-0 z-50 flex h-16 w-full items-center justify-between gap-3 border-b border-neutral-200 bg-neutral-50 px-4 sm:px-6 md:hidden">
+      <div class="min-w-0 flex-1">
+        <div class="truncate text-xl font-bold tracking-tight text-[#4A675F]">{{ layout.brand_name }}</div>
       </div>
-      <div class="flex items-center gap-2 text-[#4A675F]">
+      <div class="flex shrink-0 items-center gap-2 text-[#4A675F]">
         {% if let Some(user) = layout.current_user %}
         <a href="/settings" class="flex h-target-min w-target-min items-center justify-center rounded-full transition-colors hover:bg-neutral-100">
           <span class="material-symbols-outlined">settings</span>
         </a>
-        <form method="post" action="/logout" class="hidden sm:block">
+        <form method="post" action="/logout" class="shrink-0">
           {% if let Some(csrf) = layout.csrf %}
           <input type="hidden" name="csrf_token" value="{{ csrf.token }}" />
           {% endif %}
-          <button class="flex h-target-min items-center justify-center gap-2 rounded-full px-4 font-label-lg text-label-lg transition-colors hover:bg-neutral-100" type="submit">
+          <button class="flex h-target-min w-target-min items-center justify-center gap-2 rounded-full font-label-lg text-label-lg transition-colors hover:bg-neutral-100 sm:w-auto sm:px-4" type="submit" aria-label="Log out">
             <span class="material-symbols-outlined">logout</span>
-            {{ user.username }}
+            <span class="hidden sm:inline">{{ user.username }}</span>
           </button>
         </form>
         {% else %}
         {% if layout.registration_open %}
         <a href="/register" class="hidden h-target-min items-center rounded-full px-4 font-label-lg text-label-lg text-[#4A675F] transition-colors hover:bg-neutral-100 sm:flex">Register</a>
         {% endif %}
-        <a href="/login" class="flex h-target-min items-center rounded-full bg-primary px-5 font-label-lg text-label-lg text-on-primary shadow-sm transition-opacity hover:opacity-90">Login</a>
+        <a href="/login" class="flex h-target-min shrink-0 items-center rounded-full bg-primary px-5 font-label-lg text-label-lg text-on-primary shadow-sm transition-opacity hover:opacity-90">Login</a>
         {% endif %}
       </div>
     </header>
@@ -117,7 +65,6 @@
                 autocomplete="one-time-code"
                 autocapitalize="characters"
                 maxlength="1"
-                placeholder="•"
                 aria-label="Code character {{ index + 1 }}"
               />
               {% endfor %}
@@ -134,7 +81,6 @@
         <section>
           <div class="mb-4 flex items-center justify-between px-2">
             <h2 class="font-title-lg text-title-lg text-on-surface">Recent Activity</h2>
-            <a href="/upload" class="rounded-full px-4 py-2 font-label-lg text-label-lg text-primary transition-colors hover:bg-surface-container-high">View All</a>
           </div>
           {% if recent_uploads.is_empty() %}
           <div class="rounded-2xl bg-surface-container-lowest p-6 text-center font-body-md text-body-md text-on-surface-variant">

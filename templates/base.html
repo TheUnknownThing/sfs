@@ -7,6 +7,16 @@
       {% block title %}{{ layout.title }} - {{ layout.brand_name }}{% endblock %}
     </title>
     <meta name="color-scheme" content="light" />
+    <script>
+      (() => {
+        try {
+          if (localStorage.getItem("sfs-sidebar-collapsed") === "true") {
+            document.documentElement.dataset.sidebarCollapsed = "true";
+          }
+        } catch (_) {
+        }
+      })();
+    </script>
     <link href="/static/css/app.css" rel="stylesheet" />
     <script src="/static/js/htmx.min.js" defer></script>
     {% if let Some(csrf) = layout.csrf %}
@@ -19,6 +29,28 @@
 
     <script>
       "use strict";
+
+      const syncSidebarToggles = () => {
+        const collapsed =
+          document.documentElement.dataset.sidebarCollapsed === "true";
+        document.querySelectorAll("[data-sidebar-toggle]").forEach((toggle) => {
+          const icon = toggle.querySelector(".material-symbols-outlined");
+          if (icon) {
+            icon.textContent = collapsed ? "menu" : "menu_open";
+          }
+          toggle.setAttribute("aria-expanded", String(!collapsed));
+          toggle.setAttribute(
+            "aria-label",
+            collapsed ? "Expand sidebar" : "Collapse sidebar",
+          );
+        });
+      };
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", syncSidebarToggles);
+      } else {
+        syncSidebarToggles();
+      }
 
       document.body.addEventListener("htmx:configRequest", (event) => {
         const tokenElement = document.querySelector('meta[name="csrf-token"]');
@@ -35,6 +67,19 @@
       });
 
       document.addEventListener("click", (event) => {
+        const sidebarToggle = event.target.closest("[data-sidebar-toggle]");
+        if (sidebarToggle) {
+          const root = document.documentElement;
+          const nextCollapsed = root.dataset.sidebarCollapsed !== "true";
+          root.dataset.sidebarCollapsed = nextCollapsed ? "true" : "false";
+          syncSidebarToggles();
+          try {
+            localStorage.setItem("sfs-sidebar-collapsed", String(nextCollapsed));
+          } catch (_) {
+          }
+          return;
+        }
+
         const trigger = event.target.closest("[data-copy]");
         if (!trigger) {
           return;

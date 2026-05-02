@@ -2,57 +2,27 @@
 
 {% block content %}
 <div class="flex min-h-screen flex-col bg-background text-on-background md:flex-row">
-  <nav class="hidden h-screen w-72 shrink-0 flex-col gap-2 border-r border-surface-container bg-neutral-50 px-4 py-6 md:flex">
-    <div class="mb-8 px-4">
-      <h1 class="font-title-lg text-title-lg font-black tracking-tight text-primary-container">{{ layout.brand_name }}</h1>
-      <p class="font-label-md text-label-md text-on-surface-variant">Secure Storage</p>
-    </div>
-    <div class="flex flex-grow flex-col gap-2">
-      <a class="flex items-center gap-3 rounded-full px-4 py-3 font-label-lg text-label-lg text-on-surface-variant transition-all hover:bg-surface-container-high" href="/">
-        <span class="material-symbols-outlined">folder</span>
-        Files
-      </a>
-      <a class="flex items-center gap-3 rounded-full px-4 py-3 font-label-lg text-label-lg text-on-surface-variant transition-all hover:bg-surface-container-high" href="/paste">
-        <span class="material-symbols-outlined">content_paste</span>
-        Pastebin
-      </a>
-      <a class="flex items-center gap-3 rounded-full bg-primary-container/10 px-4 py-3 font-label-lg text-label-lg text-primary-container transition-all" href="/upload">
-        <span class="material-symbols-outlined fill">swap_horiz</span>
-        Transfers
-      </a>
-      {% if let Some(user) = layout.current_user %}
-      {% if user.is_admin %}
-      <a class="flex items-center gap-3 rounded-full px-4 py-3 font-label-lg text-label-lg text-on-surface-variant transition-all hover:bg-surface-container-high" href="/settings">
-        <span class="material-symbols-outlined">shield</span>
-        Security
-      </a>
-      {% endif %}
-      {% endif %}
-    </div>
-    <a href="/upload" class="mt-auto flex h-target-min w-full items-center justify-center gap-2 rounded-full bg-primary px-6 py-4 font-label-lg text-label-lg text-on-primary shadow-sm transition-colors hover:bg-primary/90">
-      <span class="material-symbols-outlined">add</span>
-      New Upload
-    </a>
-  </nav>
+  {% let active_nav = "transfers" %}
+  {% include "sidebar.html" %}
 
   <div class="flex h-screen flex-grow flex-col overflow-hidden">
-    <header class="flex h-16 w-full shrink-0 items-center justify-between border-b border-surface-container bg-neutral-50 px-6">
-      <div class="flex items-center gap-4">
-        <a href="/" class="rounded-full p-2 text-on-surface-variant transition-colors hover:bg-surface-container-high md:hidden">
+    <header class="flex h-16 w-full shrink-0 items-center justify-between gap-3 border-b border-surface-container bg-neutral-50 px-4 sm:px-6 md:hidden">
+      <div class="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
+        <a href="/" class="flex h-target-min w-target-min items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-high md:hidden">
           <span class="material-symbols-outlined">close</span>
         </a>
-        <h2 class="font-title-lg text-title-lg font-bold tracking-tight text-primary-container md:hidden">New Upload</h2>
+        <h2 class="truncate font-title-lg text-title-lg font-bold tracking-tight text-primary-container md:hidden">New Upload</h2>
         <h2 class="hidden font-title-lg text-title-lg text-on-surface md:block">Secure Transfer</h2>
       </div>
-      <div class="flex items-center gap-2">
-        <a href="/settings" class="rounded-full p-2 text-on-surface-variant transition-colors hover:bg-surface-container-high">
+      <div class="flex shrink-0 items-center gap-2">
+        <a href="/settings" class="flex h-target-min w-target-min items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-high">
           <span class="material-symbols-outlined">settings</span>
         </a>
-        <form method="post" action="/logout">
+        <form method="post" action="/logout" class="shrink-0">
           {% if let Some(csrf) = layout.csrf %}
           <input type="hidden" name="csrf_token" value="{{ csrf.token }}" />
           {% endif %}
-          <button class="rounded-full p-2 text-on-surface-variant transition-colors hover:bg-surface-container-high" type="submit" aria-label="Log out">
+          <button class="flex h-target-min w-target-min items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-high" type="submit" aria-label="Log out">
             <span class="material-symbols-outlined">account_circle</span>
           </button>
         </form>
@@ -77,9 +47,6 @@
             <label id="drop-zone" for="file-upload" class="group relative flex min-h-[320px] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-primary-fixed-dim bg-surface-container-lowest p-8 text-center transition-colors hover:bg-surface-container-low">
               <div class="absolute left-1/2 top-1/2 -z-10 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary-fixed/20 blur-3xl transition-colors group-hover:bg-primary-fixed/30"></div>
               <div id="drop-zone-text">
-                <div class="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-surface-container transition-transform duration-300 group-hover:scale-105">
-                  <span class="material-symbols-outlined text-4xl text-primary">cloud_upload</span>
-                </div>
                 <h3 class="mb-2 font-title-lg text-title-lg text-on-surface">Drag and drop files here</h3>
                 <p class="mb-6 max-w-sm font-body-md text-body-md text-on-surface-variant">Files are stored securely with expiring share codes. Max {{ max_file_size_display }} per transfer.</p>
                 <span class="inline-flex h-target-min items-center gap-2 rounded-full bg-surface-container-high px-6 py-3 font-label-lg text-label-lg text-on-surface transition-colors hover:bg-surface-container-highest">

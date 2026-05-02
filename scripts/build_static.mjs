@@ -38,6 +38,7 @@ const icons = [
   "login",
   "logout",
   "menu",
+  "menu_open",
   "more_vert",
   "person",
   "person_add",

@@ -2,54 +2,28 @@
 
 {% block content %}
 <div class="flex h-screen w-full overflow-hidden bg-background text-on-background">
-  <nav aria-label="Sidebar" class="relative z-10 hidden h-screen w-72 shrink-0 flex-col gap-2 bg-neutral-50 px-4 py-6 md:flex">
-    <div class="px-4 pb-6">
-      <h1 class="text-lg font-black text-[#4A675F]">{{ layout.brand_name }}</h1>
-      <p class="text-sm font-semibold text-neutral-600">Secure Storage</p>
-    </div>
-    <div class="flex flex-1 flex-col gap-1 text-sm font-semibold">
-      <a class="flex items-center gap-3 rounded-full px-4 py-3 text-neutral-600 transition-all hover:bg-neutral-200/50" href="/">
-        <span class="material-symbols-outlined">folder</span>
-        Files
-      </a>
-      <a class="flex items-center gap-3 rounded-full px-4 py-3 text-neutral-600 transition-all hover:bg-neutral-200/50" href="/paste">
-        <span class="material-symbols-outlined">content_paste</span>
-        Pastebin
-      </a>
-      <a class="flex items-center gap-3 rounded-full px-4 py-3 text-neutral-600 transition-all hover:bg-neutral-200/50" href="/upload">
-        <span class="material-symbols-outlined">swap_horiz</span>
-        Transfers
-      </a>
-      <a class="flex items-center gap-3 rounded-full bg-[#4A675F]/10 px-4 py-3 text-[#4A675F] transition-all" href="/settings">
-        <span class="material-symbols-outlined fill">shield</span>
-        Security
-      </a>
-    </div>
-    <a href="/upload" class="mt-auto flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full bg-primary px-4 py-3 font-label-lg text-on-primary transition-opacity hover:opacity-90 active:scale-95">
-      <span class="material-symbols-outlined">upload</span>
-      New Upload
-    </a>
-  </nav>
+  {% let active_nav = "users" %}
+  {% include "sidebar.html" %}
 
   <main class="relative flex h-full flex-1 flex-col overflow-hidden bg-background">
-    <header class="relative z-10 flex h-16 w-full items-center justify-between bg-neutral-50 px-6">
-      <div class="flex items-center gap-2 md:hidden">
+    <header class="relative z-10 flex h-16 w-full items-center justify-between gap-3 bg-neutral-50 px-4 sm:px-6 md:hidden">
+      <div class="flex min-w-0 flex-1 items-center gap-2 md:hidden">
         <span class="material-symbols-outlined text-[#4A675F]">menu</span>
-        <span class="text-xl font-bold tracking-tight text-[#4A675F]">{{ layout.brand_name }}</span>
+        <span class="truncate text-xl font-bold tracking-tight text-[#4A675F]">{{ layout.brand_name }}</span>
       </div>
       <div class="hidden w-96 max-w-md items-center rounded-full bg-surface-container-low px-4 py-2 transition-all focus-within:bg-surface focus-within:ring-2 focus-within:ring-primary md:flex">
         <span class="material-symbols-outlined mr-2 text-on-surface-variant">search</span>
         <input class="w-full border-none bg-transparent p-0 font-body-md text-on-surface outline-none placeholder:text-on-surface-variant focus:ring-0" placeholder="Search users, files, or logs..." type="text" />
       </div>
-      <div class="flex items-center gap-2 text-[#4A675F]">
-        <a href="/settings" class="flex min-h-[48px] min-w-[48px] items-center justify-center rounded-full p-2 transition-colors hover:bg-neutral-100" aria-label="Settings">
+      <div class="flex shrink-0 items-center gap-2 text-[#4A675F]">
+        <a href="/settings" class="flex h-target-min w-target-min items-center justify-center rounded-full transition-colors hover:bg-neutral-100" aria-label="Settings">
           <span class="material-symbols-outlined">settings</span>
         </a>
-        <form method="post" action="/logout">
+        <form method="post" action="/logout" class="shrink-0">
           {% if let Some(csrf) = layout.csrf %}
           <input type="hidden" name="csrf_token" value="{{ csrf.token }}" />
           {% endif %}
-          <button class="flex min-h-[48px] min-w-[48px] items-center justify-center rounded-full p-2 transition-colors hover:bg-neutral-100" type="submit" aria-label="Log out">
+          <button class="flex h-target-min w-target-min items-center justify-center rounded-full transition-colors hover:bg-neutral-100" type="submit" aria-label="Log out">
             <span class="material-symbols-outlined">account_circle</span>
           </button>
         </form>
@@ -57,15 +31,11 @@
     </header>
 
     <div class="flex-1 overflow-y-auto p-margin-mobile md:p-margin-desktop">
-      <div class="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+      <div class="mb-8">
         <div>
           <h1 class="mb-1 font-headline-lg text-headline-lg text-on-background">User Management</h1>
           <p class="font-body-lg text-body-lg text-on-surface-variant">Review and manage access levels across your organization.</p>
         </div>
-        <a href="#add-user" class="flex min-h-[48px] items-center justify-center gap-2 rounded-full bg-primary-container px-6 py-2.5 font-label-lg text-on-primary-container transition-all hover:brightness-110">
-          <span class="material-symbols-outlined text-[20px]">person_add</span>
-          Add User
-        </a>
       </div>
 
       {% if let Some(message) = success_message %}

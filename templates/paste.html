@@ -2,47 +2,17 @@
 
 {% block content %}
 <div class="flex min-h-screen flex-col bg-background text-on-background md:flex-row">
-  <header class="sticky top-0 z-50 flex h-16 w-full items-center justify-between border-b border-neutral-200 bg-neutral-50 px-6 md:hidden">
-    <div class="text-xl font-bold tracking-tight text-[#4A675F]">{{ layout.brand_name }}</div>
-    <div class="flex items-center gap-2 text-[#4A675F]">
+  <header class="sticky top-0 z-50 flex h-16 w-full items-center justify-between gap-3 border-b border-neutral-200 bg-neutral-50 px-4 sm:px-6 md:hidden">
+    <div class="min-w-0 flex-1 truncate text-xl font-bold tracking-tight text-[#4A675F]">{{ layout.brand_name }}</div>
+    <div class="flex shrink-0 items-center gap-2 text-[#4A675F]">
       <a href="/settings" class="flex h-target-min w-target-min items-center justify-center rounded-full transition-colors hover:bg-neutral-100">
         <span class="material-symbols-outlined">settings</span>
       </a>
     </div>
   </header>
 
-  <nav class="sticky top-0 hidden h-screen w-72 shrink-0 flex-col gap-2 border-r border-neutral-200 bg-neutral-50 px-4 py-6 md:flex">
-    <div class="mb-8 px-4">
-      <h1 class="text-lg font-black text-[#4A675F]">{{ layout.brand_name }}</h1>
-      <p class="mt-1 text-xs text-neutral-500">Secure Storage</p>
-    </div>
-    <div class="flex flex-1 flex-col gap-2">
-      <a class="flex items-center gap-3 rounded-full px-4 py-3 text-sm font-semibold text-neutral-600 transition-all hover:bg-neutral-200/50" href="/">
-        <span class="material-symbols-outlined">folder</span>
-        Files
-      </a>
-      <a class="flex items-center gap-3 rounded-full bg-[#4A675F]/10 px-4 py-3 text-sm font-semibold text-[#4A675F] transition-all" href="/paste">
-        <span class="material-symbols-outlined fill">content_paste</span>
-        Pastebin
-      </a>
-      <a class="flex items-center gap-3 rounded-full px-4 py-3 text-sm font-semibold text-neutral-600 transition-all hover:bg-neutral-200/50" href="/upload">
-        <span class="material-symbols-outlined">swap_horiz</span>
-        Transfers
-      </a>
-      {% if let Some(user) = layout.current_user %}
-      {% if user.is_admin %}
-      <a class="flex items-center gap-3 rounded-full px-4 py-3 text-sm font-semibold text-neutral-600 transition-all hover:bg-neutral-200/50" href="/settings">
-        <span class="material-symbols-outlined">shield</span>
-        Security
-      </a>
-      {% endif %}
-      {% endif %}
-    </div>
-    <a href="/upload" class="mt-auto flex h-12 items-center justify-center gap-2 rounded-full bg-primary-container font-label-lg text-label-lg text-on-primary-container shadow-sm transition-colors hover:bg-primary-container/90">
-      <span class="material-symbols-outlined">add</span>
-      New Upload
-    </a>
-  </nav>
+  {% let active_nav = "paste" %}
+  {% include "sidebar.html" %}
 
   <main class="relative mx-auto flex min-h-screen w-full max-w-7xl flex-1 flex-col">
     <div class="px-margin-mobile py-8 md:px-margin-desktop md:py-10">
@@ -81,13 +51,12 @@
               <select
                 id="paste-language"
                 name="language"
-                class="h-10 cursor-pointer appearance-none rounded-lg border border-outline-variant bg-surface pl-4 pr-10 font-label-md text-label-md text-on-surface outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                class="h-10 cursor-pointer rounded-lg border border-outline-variant bg-surface pl-4 pr-10 font-label-md text-label-md text-on-surface outline-none focus:border-primary focus:ring-1 focus:ring-primary"
               >
                 {% for option in languages %}
                 <option value="{{ option.value }}"{% if form.language == option.value %} selected{% endif %}>{{ option.label }}</option>
                 {% endfor %}
               </select>
-              <span class="material-symbols-outlined pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[20px] text-outline">arrow_drop_down</span>
             </div>
             <div class="relative hidden sm:block">
               <input
