@@ -83,15 +83,17 @@
 
         <div class="relative flex min-h-[400px] flex-1 bg-surface-bright">
           <div class="absolute inset-0 flex overflow-auto">
-            <div class="shrink-0 select-none border-r border-surface-variant bg-surface-container-lowest px-4 py-4 code-font font-body-md text-body-md text-outline">
-              {% for line in 1..17 %}
-              <div class="flex h-6 w-8 justify-end">{{ line }}</div>
+            <div class="shrink-0 select-none overflow-hidden border-r border-surface-variant bg-surface-container-lowest px-4 py-4 code-font font-body-md text-body-md text-outline" aria-hidden="true" data-paste-line-number-scroller>
+              <div data-paste-line-numbers style="min-width: 2rem">
+              {% for line in line_numbers %}
+                <div class="flex h-6 justify-end">{{ line }}</div>
               {% endfor %}
+              </div>
             </div>
             <textarea
               id="paste-content"
               name="content"
-              rows="16"
+              rows="{{ editor_rows }}"
               placeholder="Type or paste your content here..."
               required
               spellcheck="false"
@@ -170,5 +172,56 @@
       desktop.value = mobile.value;
     }
   });
+
+  (() => {
+    const textarea = document.getElementById("paste-content");
+    const lineNumberList = document.querySelector("[data-paste-line-numbers]");
+    const lineNumberScroller = document.querySelector("[data-paste-line-number-scroller]");
+
+    if (!textarea || !lineNumberList || !lineNumberScroller) {
+      return;
+    }
+
+    const minLineCount = Number.parseInt(textarea.getAttribute("rows") || "", 10) || 1;
+    let renderedLineCount = 0;
+
+    const setLineNumberWidth = (lineCount) => {
+      const digitCount = String(lineCount).length;
+      lineNumberList.style.minWidth = `${Math.max(2, digitCount * 0.65 + 0.75)}rem`;
+    };
+
+    const renderLineNumbers = () => {
+      const lineCount = Math.max(minLineCount, textarea.value.split("\n").length);
+
+      if (lineCount === renderedLineCount) {
+        return;
+      }
+
+      const fragment = document.createDocumentFragment();
+      for (let line = 1; line <= lineCount; line += 1) {
+        const item = document.createElement("div");
+        item.className = "flex h-6 justify-end";
+        item.textContent = line;
+        fragment.appendChild(item);
+      }
+
+      lineNumberList.replaceChildren(fragment);
+      setLineNumberWidth(lineCount);
+      renderedLineCount = lineCount;
+    };
+
+    const syncLineNumberScroll = () => {
+      lineNumberScroller.scrollTop = textarea.scrollTop;
+    };
+
+    textarea.addEventListener("input", () => {
+      renderLineNumbers();
+      syncLineNumberScroll();
+    });
+    textarea.addEventListener("scroll", syncLineNumberScroll);
+
+    renderLineNumbers();
+    syncLineNumberScroll();
+  })();
 </script>
 {% endblock %}

@@ -631,6 +631,13 @@ pub struct PasteFieldErrors {
     pub content: Option<String>,
 }
 
+const PASTE_EDITOR_ROWS: usize = 16;
+
+fn paste_line_numbers(content: &str, min_line_count: usize) -> Vec<usize> {
+    let line_count = content.split('\n').count().max(min_line_count);
+    (1..=line_count).collect()
+}
+
 #[derive(Template)]
 #[template(path = "paste.html", escape = "html")]
 pub struct PasteTemplate {
@@ -642,6 +649,8 @@ pub struct PasteTemplate {
     pub max_size_display: String,
     pub languages: &'static [PasteLanguageOption],
     pub requires_auth: bool,
+    pub editor_rows: usize,
+    pub line_numbers: Vec<usize>,
 }
 
 impl PasteTemplate {
@@ -651,6 +660,9 @@ impl PasteTemplate {
         max_expiration_hours: u64,
         max_size_display: impl Into<String>,
     ) -> Self {
+        let editor_rows = PASTE_EDITOR_ROWS;
+        let line_numbers = paste_line_numbers(&form.content, editor_rows);
+
         Self {
             layout,
             form,
@@ -660,6 +672,8 @@ impl PasteTemplate {
             max_size_display: max_size_display.into(),
             languages: PASTE_LANGUAGES,
             requires_auth: false,
+            editor_rows,
+            line_numbers,
         }
     }
 
@@ -676,5 +690,47 @@ impl PasteTemplate {
     pub fn with_requires_auth(mut self, requires_auth: bool) -> Self {
         self.requires_auth = requires_auth;
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn paste_line_numbers_uses_visible_editor_minimum() {
+        assert_eq!(
+            paste_line_numbers("", PASTE_EDITOR_ROWS).len(),
+            PASTE_EDITOR_ROWS
+        );
+        assert_eq!(
+            paste_line_numbers("one\ntwo", PASTE_EDITOR_ROWS).len(),
+            PASTE_EDITOR_ROWS
+        );
+    }
+
+    #[test]
+    fn paste_line_numbers_follow_content_lines() {
+        let content = (1..=20)
+            .map(|line| format!("line {line}"))
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        let line_numbers = paste_line_numbers(&content, PASTE_EDITOR_ROWS);
+
+        assert_eq!(line_numbers.len(), 20);
+        assert_eq!(line_numbers[0], 1);
+        assert_eq!(line_numbers[19], 20);
+    }
+
+    #[test]
+    fn paste_line_numbers_count_trailing_newline_as_blank_line() {
+        let content = (1..=17)
+            .map(|line| format!("line {line}"))
+            .collect::<Vec<_>>()
+            .join("\n")
+            + "\n";
+
+        assert_eq!(paste_line_numbers(&content, PASTE_EDITOR_ROWS).len(), 18);
     }
 }
